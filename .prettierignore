@@ -1,0 +1,6 @@
+node_modules/
+dist/
+build/
+coverage/
+yarn.lock
+src/routeTree.gen.ts
