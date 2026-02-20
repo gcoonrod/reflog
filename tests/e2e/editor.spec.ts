@@ -2,8 +2,8 @@ import { test, expect } from "@playwright/test";
 
 async function setupAndUnlock(page: import("@playwright/test").Page) {
   await page.goto("/setup");
-  await page.getByPlaceholder("Enter passphrase").fill("test-passphrase-123");
-  await page.getByPlaceholder("Confirm passphrase").fill("test-passphrase-123");
+  await page.getByLabel("Passphrase", { exact: true }).fill("test-passphrase-123");
+  await page.getByLabel("Confirm Passphrase").fill("test-passphrase-123");
   await page.getByRole("button", { name: /create vault/i }).click();
   await expect(page).toHaveURL(/timeline/);
 }
@@ -11,7 +11,7 @@ async function setupAndUnlock(page: import("@playwright/test").Page) {
 test.describe("markdown editor", () => {
   test.beforeEach(async ({ page }) => {
     await setupAndUnlock(page);
-    await page.getByRole("button", { name: /new entry/i }).click();
+    await page.getByRole("button", { name: /new entry/i }).first().click();
   });
 
   test("renders markdown in preview tab", async ({ page }) => {

@@ -2,8 +2,8 @@ import { test, expect } from "@playwright/test";
 
 async function setupVault(page: import("@playwright/test").Page) {
   await page.goto("/setup");
-  await page.getByPlaceholder("Enter passphrase").fill("test-passphrase-123");
-  await page.getByPlaceholder("Confirm passphrase").fill("test-passphrase-123");
+  await page.getByLabel("Passphrase", { exact: true }).fill("test-passphrase-123");
+  await page.getByLabel("Confirm Passphrase").fill("test-passphrase-123");
   await page.getByRole("button", { name: /create vault/i }).click();
   await expect(page).toHaveURL(/timeline/);
 }
@@ -33,15 +33,16 @@ test.describe("auto-lock behavior", () => {
     page,
   }) => {
     // Start writing
-    await page.getByRole("button", { name: /new entry/i }).click();
+    await page.getByRole("button", { name: /new entry/i }).first().click();
     await page.locator(".cm-editor .cm-content").click();
     await page.locator(".cm-editor .cm-content").fill("Draft content to preserve");
 
-    // Navigate away (triggers draft save)
-    await page.goto("/timeline");
+    // Navigate away via Cancel button (client-side nav preserves vault state)
+    await page.getByRole("button", { name: /cancel/i }).click();
+    await expect(page).toHaveURL(/timeline/);
 
     // Come back to new entry — should see draft prompt
-    await page.getByRole("button", { name: /new entry/i }).click();
+    await page.getByRole("button", { name: /new entry/i }).first().click();
     await expect(page.getByText(/unsaved draft/i)).toBeVisible();
   });
 });

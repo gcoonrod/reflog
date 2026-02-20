@@ -48,6 +48,7 @@ function NewEntryPage() {
   tagsRef.current = tags;
   const draftIdRef = useRef(draftId);
   draftIdRef.current = draftId;
+  const savedRef = useRef(false);
 
   // Check for existing draft on mount
   useEffect(() => {
@@ -90,6 +91,7 @@ function NewEntryPage() {
       } else {
         await create({ title, body, tags: mergedTags });
       }
+      savedRef.current = true;
       void navigate({ to: "/timeline" });
     } catch {
       setSaving(false);
@@ -109,10 +111,10 @@ function NewEntryPage() {
     [handleSave, body],
   );
 
-  // Auto-save as draft on unmount
+  // Auto-save as draft on unmount (skip if entry was already saved)
   useEffect(() => {
     return () => {
-      if (bodyRef.current.trim()) {
+      if (bodyRef.current.trim() && !savedRef.current) {
         void saveDraft(
           { title: titleRef.current, body: bodyRef.current, tags: tagsRef.current },
           draftIdRef.current ?? undefined,

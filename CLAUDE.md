@@ -15,7 +15,7 @@ tests/
 
 ## Commands
 
-yarn typecheck && yarn lint && yarn test && yarn build
+yarn typecheck && yarn lint && yarn test && yarn build && yarn test:e2e
 
 ## Code Style
 

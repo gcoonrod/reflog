@@ -96,7 +96,9 @@ function createEncryptedTable(
       return downlevelTable.get(req).then((result) => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         if (!activeKey || !result) return result;
-        return Dexie.waitFor(decryptRecord(result, fields, activeKey));
+        // Decrypt outside the IDB transaction — data is already in memory,
+        // so we don't need Dexie.waitFor() to keep the transaction alive.
+        return decryptRecord(result, fields, activeKey);
       });
     },
 
@@ -105,11 +107,9 @@ function createEncryptedTable(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         if (!activeKey) return results;
         const key = activeKey;
-        return Dexie.waitFor(
-          Promise.all(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-            results.map((r) => (r ? decryptRecord(r, fields, key) : r)),
-          ),
+        return Promise.all(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          results.map((r) => (r ? decryptRecord(r, fields, key) : r)),
         );
       });
     },
@@ -118,11 +118,9 @@ function createEncryptedTable(
       return downlevelTable.query(req).then((response) => {
         if (!activeKey) return response;
         const key = activeKey;
-        return Dexie.waitFor(
-          Promise.all(
-            response.result.map((r: unknown) =>
-              decryptRecord(r as Record<string, unknown>, fields, key),
-            ),
+        return Promise.all(
+          response.result.map((r: unknown) =>
+            decryptRecord(r as Record<string, unknown>, fields, key),
           ),
         ).then((decryptedResult) => ({
           ...response,

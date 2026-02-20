@@ -22,6 +22,7 @@ export function EntryCard({ entry }: EntryCardProps) {
     <Card
       withBorder
       padding="md"
+      data-testid="entry-card"
       style={{ cursor: "pointer" }}
       onClick={() => {
         void navigate({ to: "/entry/$id", params: { id: entry.id } });

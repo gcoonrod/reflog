@@ -3,7 +3,9 @@ import CodeMirror from "@uiw/react-codemirror";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { EditorView } from "@codemirror/view";
+import { keymap, EditorView } from "@codemirror/view";
+import { Prec } from "@codemirror/state";
+import { spotlight } from "@mantine/spotlight";
 
 interface MarkdownEditorProps {
   value: string;
@@ -20,19 +22,52 @@ export function MarkdownEditor({
     () => [
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       EditorView.lineWrapping,
-      EditorView.domEventHandlers({
-        keydown(event) {
-          // Let app-level shortcuts (Cmd+K, Cmd+N, Cmd+Enter) bubble through
-          const mod = event.metaKey || event.ctrlKey;
-          if (mod && ["k", "n"].includes(event.key)) {
-            return false;
-          }
-          if (mod && event.key === "Enter") {
-            return false;
-          }
-          return undefined;
-        },
-      }),
+      // Override CodeMirror's default Ctrl-K (deleteToLineEnd) and Ctrl-N
+      // with app-level shortcuts. Prec.highest ensures these fire before
+      // the default keymap.
+      //
+      // We bind both Mod-k (Cmd on Mac, Ctrl on Win/Linux) and the
+      // explicit Ctrl-k variant so the shortcut works regardless of how
+      // the platform is detected (CodeMirror uses navigator.platform
+      // while some environments report a different userAgent).
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-k",
+            run: () => {
+              setTimeout(() => {
+                spotlight.open();
+              }, 0);
+              return true;
+            },
+          },
+          {
+            key: "Ctrl-k",
+            run: () => {
+              setTimeout(() => {
+                spotlight.open();
+              }, 0);
+              return true;
+            },
+          },
+          {
+            key: "Mod-n",
+            run: () => false,
+          },
+          {
+            key: "Ctrl-n",
+            run: () => false,
+          },
+          {
+            key: "Mod-Enter",
+            run: () => false,
+          },
+          {
+            key: "Ctrl-Enter",
+            run: () => false,
+          },
+        ]),
+      ),
     ],
     [],
   );

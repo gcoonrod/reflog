@@ -40,6 +40,7 @@ export function SearchPalette() {
       query={query}
       onQueryChange={setQuery}
       nothingFound="No matching entries"
+      filter={(_query, acts) => acts}
       highlightQuery
       shortcut={["mod + K"]}
       searchProps={{ placeholder: "Search entries..." }}

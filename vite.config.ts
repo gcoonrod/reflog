@@ -14,6 +14,7 @@ export default defineConfig({
     viteReact(),
     VitePWA({
       registerType: "prompt",
+      outDir: "dist/client",
       manifest: {
         name: "Reflog",
         short_name: "Reflog",
@@ -43,6 +44,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globDirectory: "dist/client",
       },
     }),
   ],

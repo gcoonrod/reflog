@@ -14,8 +14,8 @@ import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EntryNewRouteImport } from './routes/entry/new'
-import { Route as EntryIdRouteImport } from './routes/entry/$id'
-import { Route as EntryIdEditRouteImport } from './routes/entry/$id.edit'
+import { Route as EntryIdIndexRouteImport } from './routes/entry/$id/index'
+import { Route as EntryIdEditRouteImport } from './routes/entry/$id/edit'
 
 const UnlockRoute = UnlockRouteImport.update({
   id: '/unlock',
@@ -42,15 +42,15 @@ const EntryNewRoute = EntryNewRouteImport.update({
   path: '/entry/new',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EntryIdRoute = EntryIdRouteImport.update({
-  id: '/entry/$id',
-  path: '/entry/$id',
+const EntryIdIndexRoute = EntryIdIndexRouteImport.update({
+  id: '/entry/$id/',
+  path: '/entry/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntryIdEditRoute = EntryIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => EntryIdRoute,
+  id: '/entry/$id/edit',
+  path: '/entry/$id/edit',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -58,18 +58,18 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/timeline': typeof TimelineRoute
   '/unlock': typeof UnlockRoute
-  '/entry/$id': typeof EntryIdRouteWithChildren
   '/entry/new': typeof EntryNewRoute
   '/entry/$id/edit': typeof EntryIdEditRoute
+  '/entry/$id/': typeof EntryIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/setup': typeof SetupRoute
   '/timeline': typeof TimelineRoute
   '/unlock': typeof UnlockRoute
-  '/entry/$id': typeof EntryIdRouteWithChildren
   '/entry/new': typeof EntryNewRoute
   '/entry/$id/edit': typeof EntryIdEditRoute
+  '/entry/$id': typeof EntryIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,9 +77,9 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/timeline': typeof TimelineRoute
   '/unlock': typeof UnlockRoute
-  '/entry/$id': typeof EntryIdRouteWithChildren
   '/entry/new': typeof EntryNewRoute
   '/entry/$id/edit': typeof EntryIdEditRoute
+  '/entry/$id/': typeof EntryIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,27 +88,27 @@ export interface FileRouteTypes {
     | '/setup'
     | '/timeline'
     | '/unlock'
-    | '/entry/$id'
     | '/entry/new'
     | '/entry/$id/edit'
+    | '/entry/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/setup'
     | '/timeline'
     | '/unlock'
-    | '/entry/$id'
     | '/entry/new'
     | '/entry/$id/edit'
+    | '/entry/$id'
   id:
     | '__root__'
     | '/'
     | '/setup'
     | '/timeline'
     | '/unlock'
-    | '/entry/$id'
     | '/entry/new'
     | '/entry/$id/edit'
+    | '/entry/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,8 +116,9 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   TimelineRoute: typeof TimelineRoute
   UnlockRoute: typeof UnlockRoute
-  EntryIdRoute: typeof EntryIdRouteWithChildren
   EntryNewRoute: typeof EntryNewRoute
+  EntryIdEditRoute: typeof EntryIdEditRoute
+  EntryIdIndexRoute: typeof EntryIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -157,41 +158,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EntryNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/entry/$id': {
-      id: '/entry/$id'
+    '/entry/$id/': {
+      id: '/entry/$id/'
       path: '/entry/$id'
-      fullPath: '/entry/$id'
-      preLoaderRoute: typeof EntryIdRouteImport
+      fullPath: '/entry/$id/'
+      preLoaderRoute: typeof EntryIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entry/$id/edit': {
       id: '/entry/$id/edit'
-      path: '/edit'
+      path: '/entry/$id/edit'
       fullPath: '/entry/$id/edit'
       preLoaderRoute: typeof EntryIdEditRouteImport
-      parentRoute: typeof EntryIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface EntryIdRouteChildren {
-  EntryIdEditRoute: typeof EntryIdEditRoute
-}
-
-const EntryIdRouteChildren: EntryIdRouteChildren = {
-  EntryIdEditRoute: EntryIdEditRoute,
-}
-
-const EntryIdRouteWithChildren =
-  EntryIdRoute._addFileChildren(EntryIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SetupRoute: SetupRoute,
   TimelineRoute: TimelineRoute,
   UnlockRoute: UnlockRoute,
-  EntryIdRoute: EntryIdRouteWithChildren,
   EntryNewRoute: EntryNewRoute,
+  EntryIdEditRoute: EntryIdEditRoute,
+  EntryIdIndexRoute: EntryIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
