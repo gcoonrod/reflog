@@ -15,6 +15,7 @@ import { EditorTabs } from "@/components/editor/EditorTabs";
 import { TagInput } from "@/components/tags/TagInput";
 import { useEntries } from "@/hooks/useEntries";
 import { useKeyboard } from "@/hooks/useKeyboard";
+import { useStorageUsage } from "@/hooks/useStorageUsage";
 import { extractFromBody, mergeTags } from "@/services/tags";
 import { defaultEntryTitle } from "@/utils/date";
 
@@ -26,6 +27,7 @@ function NewEntryPage() {
   const navigate = useNavigate();
   const { create, getDraft, saveDraft, discardDraft, publishDraft } =
     useEntries();
+  const { isCritical: storageCritical } = useStorageUsage();
 
   const [title, setTitle] = useState(defaultEntryTitle());
   const [body, setBody] = useState("");
@@ -49,16 +51,19 @@ function NewEntryPage() {
   const draftIdRef = useRef(draftId);
   draftIdRef.current = draftId;
   const savedRef = useRef(false);
+  const getDraftRef = useRef(getDraft);
+  getDraftRef.current = getDraft;
+  const saveDraftRef = useRef(saveDraft);
+  saveDraftRef.current = saveDraft;
 
   // Check for existing draft on mount
   useEffect(() => {
-    void getDraft().then((draft) => {
+    void getDraftRef.current().then((draft) => {
       if (draft) {
         setPendingDraft({ id: draft.id, title: draft.title, body: draft.body, tags: draft.tags });
         setShowDraftPrompt(true);
       }
     });
-    // Run only on mount
   }, []);
 
   const handleResumeDraft = useCallback(() => {
@@ -111,17 +116,21 @@ function NewEntryPage() {
     [handleSave, body],
   );
 
-  // Auto-save as draft on unmount (skip if entry was already saved)
+  // Auto-save as draft on unmount (skip if entry was already saved).
+  // The fire-and-forget `void` is intentional: IndexedDB transactions are
+  // queued in the browser's microtask queue and complete independently of
+  // React's component lifecycle. The write will finish even after unmount.
+  // The only failure mode is a hard tab/browser close, which no in-page
+  // mechanism (including sendBeacon, which is HTTP-only) can mitigate for IDB.
   useEffect(() => {
     return () => {
       if (bodyRef.current.trim() && !savedRef.current) {
-        void saveDraft(
+        void saveDraftRef.current(
           { title: titleRef.current, body: bodyRef.current, tags: tagsRef.current },
           draftIdRef.current ?? undefined,
         );
       }
     };
-    // Run only on mount
   }, []);
 
   return (
@@ -169,7 +178,7 @@ function NewEntryPage() {
               <Button
                 size="xs"
                 loading={saving}
-                disabled={!body.trim()}
+                disabled={!body.trim() || storageCritical}
                 onClick={() => {
                   void handleSave();
                 }}

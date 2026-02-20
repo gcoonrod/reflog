@@ -98,9 +98,10 @@ function RootComponent() {
                 <SearchPalette />
               </ErrorBoundary>
               <ReloadPrompt />
-              <StorageWarning />
-              <MultiTabWarning />
-              <Outlet />
+              <StorageWarning>
+                <MultiTabWarning />
+                <Outlet />
+              </StorageWarning>
             </VaultProvider>
           </ErrorBoundary>
         </MantineProvider>

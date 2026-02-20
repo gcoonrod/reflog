@@ -13,6 +13,7 @@ import { EditorTabs } from "@/components/editor/EditorTabs";
 import { TagInput } from "@/components/tags/TagInput";
 import { useEntry } from "@/hooks/useEntries";
 import { useKeyboard } from "@/hooks/useKeyboard";
+import { useStorageUsage } from "@/hooks/useStorageUsage";
 import * as entryService from "@/services/entries";
 import { extractFromBody, mergeTags } from "@/services/tags";
 
@@ -24,6 +25,7 @@ function EditEntryPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const { entry, isLoading } = useEntry(id);
+  const { isCritical: storageCritical } = useStorageUsage();
 
   const [title, setTitle] = useState<string | null>(null);
   const [body, setBody] = useState<string | null>(null);
@@ -89,7 +91,7 @@ function EditEntryPage() {
             <Button
               size="xs"
               loading={saving}
-              disabled={!currentBody.trim()}
+              disabled={!currentBody.trim() || storageCritical}
               onClick={() => {
                 void handleSave();
               }}
