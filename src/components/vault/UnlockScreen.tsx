@@ -34,6 +34,7 @@ export function UnlockScreen() {
   }
 
   return (
+    <main>
     <Center h="100vh">
       <Paper p="xl" w={400} withBorder>
         <form
@@ -78,5 +79,6 @@ export function UnlockScreen() {
         </form>
       </Paper>
     </Center>
+    </main>
   );
 }

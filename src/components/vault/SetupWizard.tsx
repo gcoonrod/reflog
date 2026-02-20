@@ -49,6 +49,7 @@ export function SetupWizard() {
   }
 
   return (
+    <main>
     <Center h="100vh">
       <Paper p="xl" w={400} withBorder>
         <form
@@ -122,5 +123,6 @@ export function SetupWizard() {
         </form>
       </Paper>
     </Center>
+    </main>
   );
 }

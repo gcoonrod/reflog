@@ -24,23 +24,25 @@ import { SearchPalette } from "@/components/search/SearchPalette";
 import { ReloadPrompt } from "@/components/common/ReloadPrompt";
 import { StorageWarning } from "@/components/common/StorageWarning";
 import { MultiTabWarning } from "@/components/common/MultiTabWarning";
-import { theme } from "@/theme";
+import { theme, cssResolver } from "@/theme";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
 function NotFoundComponent() {
   return (
-    <Container size="xs" py="xl" ta="center">
-      <Title order={1} ff="monospace">
-        404
-      </Title>
-      <Text c="dimmed" mt="sm">
-        Page not found.
-      </Text>
-      <Button component={Link} to="/" mt="lg" variant="light">
-        Back to home
-      </Button>
-    </Container>
+    <main>
+      <Container size="xs" py="xl" ta="center">
+        <Title order={1} ff="monospace">
+          404
+        </Title>
+        <Text c="dimmed" mt="sm">
+          Page not found.
+        </Text>
+        <Button component={Link} to="/" mt="lg" variant="light">
+          Back to home
+        </Button>
+      </Container>
+    </main>
   );
 }
 
@@ -83,12 +85,22 @@ function RootComponent() {
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#1a1b1e" />
+        <meta
+          name="description"
+          content="Privacy-first developer journal. Encrypted, offline-first, keyboard-driven."
+        />
+        <title>Reflog</title>
+        <link rel="icon" href="/icons/icon-192x192.png" type="image/png" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <ColorSchemeScript defaultColorScheme="dark" />
         <HeadContent />
       </head>
       <body>
-        <MantineProvider theme={theme} defaultColorScheme="dark">
+        <MantineProvider
+          theme={theme}
+          defaultColorScheme="dark"
+          cssVariablesResolver={cssResolver}
+        >
           <ErrorBoundary>
             <Notifications position="top-right" />
             <VaultProvider>
