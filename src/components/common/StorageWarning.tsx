@@ -52,6 +52,7 @@ export function StorageWarning({ children }: { children: React.ReactNode }) {
           color={ctxValue.isCritical ? "red" : "orange"}
           withBorder
           withCloseButton
+          closeButtonProps={{ "aria-label": "Dismiss warning" }}
           onClose={() => {
             setDismissed(true);
           }}

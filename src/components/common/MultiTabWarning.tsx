@@ -37,6 +37,7 @@ export function MultiTabWarning() {
       color="yellow"
       withBorder
       withCloseButton
+      closeButtonProps={{ "aria-label": "Dismiss warning" }}
       onClose={() => { setDismissed(true); }}
       style={{ position: "fixed", bottom: 80, left: 16, zIndex: 1000, maxWidth: 360 }}
     >

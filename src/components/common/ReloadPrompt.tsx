@@ -14,6 +14,7 @@ export function ReloadPrompt() {
     <Notification
       withBorder
       withCloseButton
+      closeButtonProps={{ "aria-label": "Dismiss notification" }}
       onClose={() => {
         setOfflineReady(false);
         setNeedRefresh(false);
