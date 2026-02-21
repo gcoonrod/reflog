@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-02-21
+
+### Changed
+- Inline deploy job in ci.yml, eliminating separate cd.yml and unreliable workflow_run trigger
+- Conditional cancel-in-progress: only cancel stale PR runs, never in-flight main deployments
+
+### Fixed
+- Spurious CD runs triggered by PR CI completions despite workflow_run branch filter
+
 ## [0.3.0] - 2026-02-21
 
 ### Added
