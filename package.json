@@ -56,7 +56,7 @@
     "postcss": "latest",
     "postcss-preset-mantine": "latest",
     "postcss-simple-vars": "latest",
-    "prettier": "latest",
+    "prettier": "^3.8.1",
     "typescript": "^5.7.0",
     "typescript-eslint": "latest",
     "vite": "^7.3.1",

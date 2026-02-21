@@ -26,59 +26,57 @@ export function UnlockScreen() {
     try {
       await unlock(passphrase);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to unlock vault",
-      );
+      setError(err instanceof Error ? err.message : "Failed to unlock vault");
       setLoading(false);
     }
   }
 
   return (
     <main>
-    <Center h="100vh">
-      <Paper p="xl" w={400} withBorder>
-        <form
-          onSubmit={(e) => {
-            void handleSubmit(e);
-          }}
-        >
-          <Stack gap="md">
-            <Title order={2} ta="center">
-              Unlock Reflog
-            </Title>
+      <Center h="100vh">
+        <Paper p="xl" w={400} withBorder>
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
+          >
+            <Stack gap="md">
+              <Title order={2} ta="center">
+                Unlock Reflog
+              </Title>
 
-            <Text size="sm" c="dimmed" ta="center">
-              Enter your passphrase to unlock your journal.
-            </Text>
-
-            <PasswordInput
-              label="Passphrase"
-              placeholder="Enter your passphrase"
-              value={passphrase}
-              onChange={(e) => {
-                setPassphrase(e.currentTarget.value);
-              }}
-              autoFocus
-            />
-
-            {error && (
-              <Text size="sm" c="red">
-                {error}
+              <Text size="sm" c="dimmed" ta="center">
+                Enter your passphrase to unlock your journal.
               </Text>
-            )}
 
-            <Button
-              type="submit"
-              fullWidth
-              disabled={!passphrase}
-              loading={loading}
-            >
-              Unlock
-            </Button>
-          </Stack>
-        </form>
-      </Paper>
-    </Center>
+              <PasswordInput
+                label="Passphrase"
+                placeholder="Enter your passphrase"
+                value={passphrase}
+                onChange={(e) => {
+                  setPassphrase(e.currentTarget.value);
+                }}
+                autoFocus
+              />
+
+              {error && (
+                <Text size="sm" c="red">
+                  {error}
+                </Text>
+              )}
+
+              <Button
+                type="submit"
+                fullWidth
+                disabled={!passphrase}
+                loading={loading}
+              >
+                Unlock
+              </Button>
+            </Stack>
+          </form>
+        </Paper>
+      </Center>
     </main>
   );
 }

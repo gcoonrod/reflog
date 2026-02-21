@@ -13,7 +13,13 @@ export function TagBadge({ tag, count, selected, onClick }: TagBadgeProps) {
       size="sm"
       variant={selected ? "filled" : "light"}
       style={onClick ? { cursor: "pointer" } : undefined}
-      onClick={onClick ? () => { onClick(tag); } : undefined}
+      onClick={
+        onClick
+          ? () => {
+              onClick(tag);
+            }
+          : undefined
+      }
     >
       {tag}
       {count !== undefined && ` (${count})`}

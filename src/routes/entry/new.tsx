@@ -60,7 +60,12 @@ function NewEntryPage() {
   useEffect(() => {
     void getDraftRef.current().then((draft) => {
       if (draft) {
-        setPendingDraft({ id: draft.id, title: draft.title, body: draft.body, tags: draft.tags });
+        setPendingDraft({
+          id: draft.id,
+          title: draft.title,
+          body: draft.body,
+          tags: draft.tags,
+        });
         setShowDraftPrompt(true);
       }
     });
@@ -126,7 +131,11 @@ function NewEntryPage() {
     return () => {
       if (bodyRef.current.trim() && !savedRef.current) {
         void saveDraftRef.current(
-          { title: titleRef.current, body: bodyRef.current, tags: tagsRef.current },
+          {
+            title: titleRef.current,
+            body: bodyRef.current,
+            tags: tagsRef.current,
+          },
           draftIdRef.current ?? undefined,
         );
       }

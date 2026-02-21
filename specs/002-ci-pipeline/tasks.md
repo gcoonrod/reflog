@@ -119,8 +119,8 @@
 **Ref**: [plan.md#step-8](./plan.md#step-8-run-quality-gate-locally), [plan.md#step-9](./plan.md#step-9-verify-via-test-pr), [quickstart.md#verification-steps](./quickstart.md#verification-steps)
 
 - [x] T014 Run full quality gate locally: `yarn typecheck && yarn lint && yarn test && yarn build && yarn test:e2e` — verify all project changes pass before committing
-- [ ] T015 Commit all changes and push to the `002-ci-pipeline` branch
-- [ ] T016 Create a PR against `develop` and verify all 6 status checks appear: `lint`, `typecheck`, `format-check`, `unit-tests`, `e2e-tests`, `security`. Verify `lint`, `typecheck`, `format-check`, `unit-tests`, and `e2e-tests` pass (green). The `security` check is expected to fail due to known high-severity `minimatch` transitive dependency advisories (via eslint, typescript-eslint, workbox) — verify the failure is from the audit step citing `minimatch`, not a CodeQL or configuration error. Follow full verification procedure in [quickstart.md#verification-steps](./quickstart.md#verification-steps). Satisfies SC-001 through SC-006. Depends on T015
+- [x] T015 Commit all changes and push to the `002-ci-pipeline` branch
+- [x] T016 Create a PR against `develop` and verify all 6 status checks appear: `lint`, `typecheck`, `format-check`, `unit-tests`, `e2e-tests`, `security`. Verify `lint`, `typecheck`, `format-check`, `unit-tests`, and `e2e-tests` pass (green). The `security` check is expected to fail due to known high-severity `minimatch` transitive dependency advisories (via eslint, typescript-eslint, workbox) — verify the failure is from the audit step citing `minimatch`, not a CodeQL or configuration error. Follow full verification procedure in [quickstart.md#verification-steps](./quickstart.md#verification-steps). Satisfies SC-001 through SC-006. Depends on T015
 - [ ] T017 Verify caching works — push a second commit to the same PR and confirm "Cache restored" appears in the setup-node step logs. Satisfies SC-007. Depends on T016
 
 **Checkpoint**: CI pipeline fully operational and verified. All functional requirements and success criteria validated.

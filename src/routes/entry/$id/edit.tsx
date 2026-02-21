@@ -115,11 +115,7 @@ function EditEntryPage() {
               variant="unstyled"
               styles={{ input: { fontWeight: 600 } }}
             />
-            <EditorTabs
-              value={currentBody}
-              onChange={setBody}
-              autoFocus
-            />
+            <EditorTabs value={currentBody} onChange={setBody} autoFocus />
             <TagInput tags={currentTags} onChange={setTags} />
           </Stack>
         </Container>

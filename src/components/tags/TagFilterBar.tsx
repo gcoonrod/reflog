@@ -32,7 +32,9 @@ export function TagFilterBar({
             placeholder="Filter tags..."
             size="xs"
             value={filter}
-            onChange={(e) => { setFilter(e.currentTarget.value); }}
+            onChange={(e) => {
+              setFilter(e.currentTarget.value);
+            }}
             style={{ maxWidth: 160 }}
           />
         )}

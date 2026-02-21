@@ -1,5 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell, Container, Group, Stack, Title, Button } from "@mantine/core";
+import {
+  AppShell,
+  Container,
+  Group,
+  Stack,
+  Title,
+  Button,
+} from "@mantine/core";
 import { useNavigate } from "@tanstack/react-router";
 import { useEntries } from "@/hooks/useEntries";
 import { useTags } from "@/hooks/useTags";

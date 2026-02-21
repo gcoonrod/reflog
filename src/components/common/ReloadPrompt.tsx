@@ -19,18 +19,24 @@ export function ReloadPrompt() {
         setOfflineReady(false);
         setNeedRefresh(false);
       }}
-      style={{ position: "fixed", bottom: 16, right: 16, zIndex: 1000, maxWidth: 360 }}
+      style={{
+        position: "fixed",
+        bottom: 16,
+        right: 16,
+        zIndex: 1000,
+        maxWidth: 360,
+      }}
     >
-      {offlineReady && (
-        <Text size="sm">App is ready for offline use.</Text>
-      )}
+      {offlineReady && <Text size="sm">App is ready for offline use.</Text>}
       {needRefresh && (
         <Group gap="xs">
           <Text size="sm">A new version is available.</Text>
           <Button
             size="xs"
             variant="light"
-            onClick={() => { void updateServiceWorker(); }}
+            onClick={() => {
+              void updateServiceWorker();
+            }}
           >
             Reload
           </Button>
