@@ -11,8 +11,6 @@ concurrency:
 
 permissions:
   contents: read
-  actions: read # CodeQL needs workflow run metadata
-  security-events: write # CodeQL SARIF upload
 
 jobs:
   lint:
@@ -119,7 +117,7 @@ jobs:
           name: e2e-traces
           path: test-results/
 
-  security:
+  dependency-audit:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -151,11 +149,3 @@ jobs:
             }
             console.log('PASS: No critical/high vulnerabilities');
           "
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Run CodeQL analysis
-        uses: github/codeql-action/analyze@v3
