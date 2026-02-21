@@ -376,7 +376,7 @@ Playwright browsers are ~200MB and only needed by the e2e-tests job. Cache them 
             for (const line of lines) {
               try {
                 const data = JSON.parse(line);
-                if (data.type === 'auditSummary') summary = data.vulnerabilities;
+                if (data.type === 'auditSummary') summary = data.data.vulnerabilities;
               } catch {}
             }
             if (!summary) { console.error('No audit summary found'); process.exit(1); }
