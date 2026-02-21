@@ -363,28 +363,30 @@ Playwright browsers are ~200MB and only needed by the e2e-tests job. Cache them 
 
 **Verified locally**: The project currently has 2 moderate + 8 high vulnerabilities (all `minimatch` ReDoS via transitive deps). `yarn audit --level critical` exits `12` (bitmask: 4+8) despite zero critical findings.
 
-**Solution**: Parse `yarn audit --json` output and check severity counts programmatically:
+**Solution**: Capture `yarn audit --json` to a file (suppressing the non-zero exit), then parse severity counts programmatically. A pipe-based approach fails in CI because GitHub Actions uses `bash -e -o pipefail`, which terminates the pipeline before the Node.js script finishes reading when `yarn audit` exits non-zero:
 
 ```yaml
       - name: Audit dependencies (fail on critical/high only)
         run: |
-          yarn audit --json | node -e "
+          yarn audit --json > /tmp/audit.json || true
+          node -e "
+            const fs = require('fs');
+            const lines = fs.readFileSync('/tmp/audit.json', 'utf8').split('\n');
             let summary;
-            require('readline').createInterface({ input: process.stdin })
-              .on('line', line => {
+            for (const line of lines) {
+              try {
                 const data = JSON.parse(line);
                 if (data.type === 'auditSummary') summary = data.vulnerabilities;
-              })
-              .on('close', () => {
-                if (!summary) { console.error('No audit summary found'); process.exit(1); }
-                const { high = 0, critical = 0 } = summary;
-                console.log('Audit results:', JSON.stringify(summary));
-                if (critical > 0 || high > 0) {
-                  console.error('FAIL: Found ' + critical + ' critical and ' + high + ' high severity vulnerabilities');
-                  process.exit(1);
-                }
-                console.log('PASS: No critical/high vulnerabilities');
-              });
+              } catch {}
+            }
+            if (!summary) { console.error('No audit summary found'); process.exit(1); }
+            const { high = 0, critical = 0 } = summary;
+            console.log('Audit results:', JSON.stringify(summary));
+            if (critical > 0 || high > 0) {
+              console.error('FAIL: Found ' + critical + ' critical and ' + high + ' high severity vulnerabilities');
+              process.exit(1);
+            }
+            console.log('PASS: No critical/high vulnerabilities');
           "
 ```
 

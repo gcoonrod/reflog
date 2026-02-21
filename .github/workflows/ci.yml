@@ -130,23 +130,25 @@ jobs:
 
       - name: Audit dependencies (fail on critical/high only)
         run: |
-          yarn audit --json | node -e "
+          yarn audit --json > /tmp/audit.json || true
+          node -e "
+            const fs = require('fs');
+            const lines = fs.readFileSync('/tmp/audit.json', 'utf8').split('\n');
             let summary;
-            require('readline').createInterface({ input: process.stdin })
-              .on('line', line => {
+            for (const line of lines) {
+              try {
                 const data = JSON.parse(line);
                 if (data.type === 'auditSummary') summary = data.vulnerabilities;
-              })
-              .on('close', () => {
-                if (!summary) { console.error('No audit summary found'); process.exit(1); }
-                const { high = 0, critical = 0 } = summary;
-                console.log('Audit results:', JSON.stringify(summary));
-                if (critical > 0 || high > 0) {
-                  console.error('FAIL: Found ' + critical + ' critical and ' + high + ' high severity vulnerabilities');
-                  process.exit(1);
-                }
-                console.log('PASS: No critical/high vulnerabilities');
-              });
+              } catch {}
+            }
+            if (!summary) { console.error('No audit summary found'); process.exit(1); }
+            const { high = 0, critical = 0 } = summary;
+            console.log('Audit results:', JSON.stringify(summary));
+            if (critical > 0 || high > 0) {
+              console.error('FAIL: Found ' + critical + ' critical and ' + high + ' high severity vulnerabilities');
+              process.exit(1);
+            }
+            console.log('PASS: No critical/high vulnerabilities');
           "
 
       - name: Initialize CodeQL
