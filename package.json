@@ -65,5 +65,8 @@
     "vitest": "latest",
     "workbox-build": "^7.4.0",
     "workbox-window": "^7.4.0"
+  },
+  "resolutions": {
+    "minimatch": "^10.2.1"
   }
 }
