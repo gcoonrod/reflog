@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-21
+
+### Added
+- CD pipeline with GitHub Actions for automated deployment to Cloudflare Pages
+- Version guard: skip deployment when version tag already exists
+- Changelog guard: require CHANGELOG.md entry for every deployed version
+- Production hosting at reflog.microcode.io with automatic SSL via Cloudflare Pages
+- Git tag creation on successful deployment for release tracking
+
 ## [0.2.0] - 2026-02-21
 
 ### Added
