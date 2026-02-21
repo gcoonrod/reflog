@@ -51,14 +51,15 @@ specs/003-cd-pipeline/
 ```text
 .github/
 └── workflows/
-    ├── ci.yml           # Existing CI workflow (modified: add push trigger, fix concurrency)
-    ├── codeql.yml       # Existing CodeQL workflow (unchanged)
-    └── cd.yml           # New CD workflow
+    ├── ci.yml           # CI + CD workflow (modified: added push trigger, deploy job, workflow_dispatch)
+    └── codeql.yml       # Existing CodeQL workflow (unchanged)
 
 CHANGELOG.md             # New file (Keep a Changelog format)
+public/
+└── _redirects           # SPA routing rule for Cloudflare Pages
 ```
 
-**Structure Decision**: This feature adds a single workflow file (`cd.yml`) and a `CHANGELOG.md` to the repository root. The only existing file modified is `ci.yml` (to add a `push` trigger on `main` and fix the concurrency group for push events).
+**Structure Decision**: The deploy job is inlined in `ci.yml` as a conditional job that only runs on pushes to `main`. This eliminates the need for a separate `cd.yml` file and avoids the unreliable `workflow_run` trigger that caused spurious deployments from PR CI completions. A `_redirects` file provides SPA routing on Cloudflare Pages.
 
 ## Environment Variables & Secrets
 
@@ -113,42 +114,20 @@ Create `CHANGELOG.md` in the repository root following the Keep a Changelog 1.1.
 
 The CD workflow's changelog guard will validate this file using `grep -qE "^## \[${VERSION}\]" CHANGELOG.md`, so the version header format `## [x.y.z]` is load-bearing and must be exact.
 
-### Step 2: Update CI workflow for push events on main
+### Step 2: Update CI workflow with push trigger and deploy job
 
 **Modifies**: `.github/workflows/ci.yml`
-**References**: [CI Workflow Changes](#ci-workflow-changes) for the complete diff, [research.md R4](./research.md#r4-ci-check-verification-in-cd-workflows) for why this change is needed
+**References**: [CI Workflow Changes](#ci-workflow-changes) for details, [research.md R1](./research.md#r1-cloudflare-pages-deployment-from-github-actions) (deployment), [R2](./research.md#r2-version-comparison-in-cd-workflows) (version guard), [R3](./research.md#r3-changelog-validation-in-github-actions) (changelog guard), [R6](./research.md#r6-concurrency-controls-for-cd-workflows) (concurrency)
 
-Two changes are required in `ci.yml`:
+The CI workflow is extended with three changes:
 
-**Change 1 — Add push trigger**: Add `push: branches: [main]` to the `on:` block. Without this, CI does not run on pushes to `main`, and the CD workflow's `workflow_run` trigger will never fire.
+**Change 1 — Add push and workflow_dispatch triggers**: Add `push: branches: [main]` and `workflow_dispatch` to the `on:` block. Push triggers CI+CD on merges to main. `workflow_dispatch` enables manual deployment recovery.
 
-**Change 2 — Fix concurrency group**: The current concurrency group is `ci-${{ github.event.pull_request.number }}`. Push events have no `pull_request.number` context, so this would produce the group key `ci-` (empty suffix) for all push-triggered runs, causing them to cancel each other. Change the group to use `github.ref` which works for both event types.
+**Change 2 — Conditional cancel-in-progress**: Change `cancel-in-progress` to `${{ github.event_name == 'pull_request' }}` so stale PR runs are cancelled but in-flight main pushes (which may include a deploy) are never cancelled.
 
-Target state for the top of `ci.yml`:
+**Change 3 — Inline deploy job**: Add a `deploy` job gated by `if: github.ref == 'refs/heads/main'` with `needs: [all CI jobs]`. This replaces the separate `cd.yml` and its unreliable `workflow_run` trigger. The deploy job has its own concurrency group (`production-deploy`) and elevated permissions (`contents: write`, `deployments: write`).
 
-```yaml
-name: CI
-
-on:
-  pull_request:
-    branches: [develop]
-    types: [opened, synchronize, reopened]
-  push:
-    branches: [main]
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-```
-
-The CI jobs themselves are unchanged — the same lint, typecheck, format-check, unit-tests, e2e-tests, and dependency-audit jobs run on both PR events and push events.
-
-### Step 3: Create CD workflow
-
-**Creates**: `.github/workflows/cd.yml`
-**References**: [Complete cd.yml](#complete-cdyml) for the full workflow file, [research.md R1](./research.md#r1-cloudflare-pages-deployment-from-github-actions) (deployment), [R2](./research.md#r2-version-comparison-in-cd-workflows) (version guard), [R3](./research.md#r3-changelog-validation-in-github-actions) (changelog guard), [R4](./research.md#r4-ci-check-verification-in-cd-workflows) (trigger), [R6](./research.md#r6-concurrency-controls-for-cd-workflows) (concurrency)
-
-Create `.github/workflows/cd.yml` using the complete workflow YAML in the [Complete cd.yml](#complete-cdyml) section below. That section contains the full, copy-ready file with inline comments explaining each step. The design decisions behind each section are documented in the corresponding research.md entries linked above.
+> **Why not a separate cd.yml?** The `workflow_run` trigger's `branches` filter does not reliably filter out PR-triggered CI completions, causing spurious CD runs. Inlining the deploy job in ci.yml eliminates this class of bugs entirely — the deploy job only evaluates when CI runs on `refs/heads/main`.
 
 ### Step 4: Configure Cloudflare Pages and DNS *(manual — human only)*
 
@@ -173,182 +152,43 @@ yarn typecheck && yarn lint && yarn test && yarn build && yarn test:e2e
 
 **References**: [quickstart.md — Verification Steps](./quickstart.md#verification-steps) for the complete 10-step verification checklist with commands
 
-Commit all changes, create a release branch, bump version to 0.3.0, add changelog entry, merge to `main`, and verify the full CD pipeline using the verification checklist in [quickstart.md](./quickstart.md#verification-steps). The key checkpoints are:
+Commit all changes, create a release branch, bump version, add changelog entry, merge to `main`, and verify the full CD pipeline. The key checkpoints are:
 
-1. CI runs on `main` push and passes
-2. CD triggers via `workflow_run` after CI completes
-3. Version guard detects new version (no `v0.3.0` tag)
-4. Changelog guard finds `## [0.3.0]` entry
+1. CI runs on `main` push and all jobs pass
+2. Deploy job runs after all CI jobs pass (same workflow)
+3. Version guard detects new version (no existing tag)
+4. Changelog guard finds the version entry
 5. Build succeeds and deployment to Cloudflare Pages completes
-6. Git tag `v0.3.0` is created and pushed
+6. Git tag is created and pushed
 7. `https://reflog.microcode.io` serves the application with valid SSL
 8. A subsequent non-version-bump push skips deployment gracefully
 
 ---
 
-## Complete cd.yml
+## Deploy Job (inlined in ci.yml)
 
-The full `.github/workflows/cd.yml` file. Copy this verbatim, then verify against the [spec requirements mapping](#spec-requirements-mapping) below.
+The deploy job is part of `.github/workflows/ci.yml`, gated by `if: github.ref == 'refs/heads/main'` and `needs: [all CI jobs]`. On PR runs to develop, the deploy job is automatically skipped (ref is not main). On pushes to main, it runs after all CI jobs pass. The `workflow_dispatch` trigger also enables manual recovery.
 
-```yaml
-name: CD
+Key design decisions:
+- **No separate cd.yml**: Eliminates the unreliable `workflow_run` trigger that caused spurious deployments from PR CI completions.
+- **Job-level concurrency**: The deploy job has its own `production-deploy` concurrency group with `cancel-in-progress: false`, separate from the workflow-level CI concurrency group.
+- **Job-level permissions**: Only the deploy job gets `contents: write` and `deployments: write`; CI jobs inherit the workflow-level `contents: read`.
+- **Conditional cancel-in-progress**: `${{ github.event_name == 'pull_request' }}` cancels stale PR runs but never cancels main pushes (protecting in-flight deploys).
+- **SPA shell copy**: TanStack Start outputs `_shell.html` as the SPA entry point; Cloudflare Pages requires `index.html` for the root route.
 
-# Trigger: Chain after CI completes on main (R4)
-# The workflow_run event fires when the 'CI' workflow completes on the main branch.
-# The workflow name 'CI' must match ci.yml's `name:` exactly (case-sensitive).
-on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [main]
-
-# Concurrency: Queue deployments, never cancel in-progress (R6)
-# Canceling a deployment mid-upload could leave Cloudflare Pages in a partial
-# state and skip the git tagging step, breaking idempotency.
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
-
-permissions:
-  contents: write    # Push git tags after deployment
-  deployments: write # Create GitHub deployment status
-
-jobs:
-  deploy:
-    runs-on: ubuntu-24.04
-    # Only deploy if CI passed on main. The branches filter on workflow_run
-    # may not reliably filter PR-triggered CI runs, so we also check head_branch.
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
-
-    steps:
-      # Checkout main with full history and tags for version comparison (R2).
-      # Explicit ref: main is required because workflow_run context may default
-      # to a different commit (e.g., from a PR merge) rather than main HEAD.
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          fetch-tags: true
-
-      # --- Version Guard (R2) ---
-      # Compare package.json version against existing git tags.
-      # If v<version> tag already exists, skip deployment (exit 0, not failure).
-      # If tag does not exist, proceed. This is idempotent: if a prior deployment
-      # failed before tagging, the next run re-attempts the same version.
-      - name: Check version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Version $VERSION already deployed (tag v$VERSION exists). Skipping."
-            echo "## Deployment Skipped" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Version **$VERSION** is already deployed (tag \`v$VERSION\` exists)." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "New version detected: $VERSION"
-          fi
-
-      # --- Changelog Guard (R3) ---
-      # Verify CHANGELOG.md exists and contains an entry for this version.
-      # Uses Keep a Changelog format: ## [x.y.z] (with optional date suffix).
-      # Fails the workflow with a clear error annotation if missing.
-      - name: Verify changelog entry
-        if: steps.version.outputs.skip == 'false'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if [ ! -f CHANGELOG.md ]; then
-            echo "::error::CHANGELOG.md not found. Create a CHANGELOG.md with a '## [$VERSION]' section before deploying."
-            echo "## Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "**CHANGELOG.md** file not found in repository root." >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          if ! grep -qE "^## \[${VERSION}\]" CHANGELOG.md; then
-            echo "::error::CHANGELOG.md has no entry for version $VERSION. Add a '## [$VERSION]' section before deploying."
-            echo "## Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Missing CHANGELOG.md entry for version **$VERSION**." >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          echo "Changelog entry found for version $VERSION"
-
-      # --- Build ---
-      # Install dependencies and build the application.
-      # The build output at dist/client/ is what gets deployed.
-      - name: Setup Node.js
-        if: steps.version.outputs.skip == 'false'
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        if: steps.version.outputs.skip == 'false'
-        run: yarn install --frozen-lockfile
-
-      - name: Build
-        if: steps.version.outputs.skip == 'false'
-        run: yarn build
-
-      # TanStack Start outputs _shell.html as the SPA entry point.
-      # Cloudflare Pages requires index.html to serve the root route.
-      - name: Copy SPA shell to index.html
-        if: steps.version.outputs.skip == 'false'
-        run: cp dist/client/_shell.html dist/client/index.html
-
-      # --- Deploy to Cloudflare Pages (R1) ---
-      # Uses the official wrangler-action which handles authentication
-      # and exposes the deployment URL as a step output.
-      - name: Deploy to Cloudflare Pages
-        if: steps.version.outputs.skip == 'false'
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/client --project-name=reflog --branch=main --commit-hash=${{ github.sha }}
-
-      # --- Post-Deployment: Tag and Summary ---
-      # Create a git tag for this version and push it. The tag is what the
-      # version guard checks on subsequent runs to determine if deployment
-      # should be skipped.
-      - name: Create git tag
-        if: steps.version.outputs.skip == 'false'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-
-      - name: Write deployment summary
-        if: steps.version.outputs.skip == 'false'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          echo "## Deployment Successful" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Version**: $VERSION" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Tag**: \`v$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **URL**: ${{ steps.deploy.outputs.deployment-url }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Production**: https://reflog.microcode.io" >> "$GITHUB_STEP_SUMMARY"
-```
+See the current `.github/workflows/ci.yml` for the complete workflow.
 
 ### Spec Requirements Mapping
 
-Every step in the workflow above maps to one or more functional requirements:
-
 | Step | Satisfies | Notes |
 |------|-----------|-------|
-| `workflow_run` trigger | FR-001, FR-002 | Triggers on push to main (via CI); CI success required by `if:` condition |
-| `concurrency` block | FR-008 | Queues deployments; see [research.md R6](./research.md#r6-concurrency-controls-for-cd-workflows) for rationale |
+| `push: branches: [main]` trigger | FR-001, FR-002 | Deploy job runs only on main; CI success required by `needs:` |
+| `workflow_dispatch` trigger | Manual recovery | Enables re-deployment without code changes |
+| Deploy job `concurrency` block | FR-008 | Queues deployments; see [research.md R6](./research.md#r6-concurrency-controls-for-cd-workflows) for rationale |
 | Version guard | FR-003, FR-006, SC-007 | Skips gracefully when version unchanged |
 | Changelog guard | FR-004, FR-007, FR-014, SC-003 | Fails with `::error::` annotation when entry missing |
 | Build step | FR-005 | `yarn build` produces `dist/client/` |
+| Copy SPA shell to index.html | FR-005 | TanStack Start `_shell.html` → Cloudflare Pages `index.html` |
 | Cloudflare Pages deploy | FR-005, FR-009, FR-010, FR-011, FR-012, SC-006 | Hosting properties provided by Cloudflare Pages |
 | Git tag creation | FR-003 (idempotency) | Tag is the source of truth for "already deployed" |
 | Step summaries | FR-015 | Success, skipped, and failed paths all write to `$GITHUB_STEP_SUMMARY` |
@@ -358,29 +198,17 @@ Every step in the workflow above maps to one or more functional requirements:
 
 ## CI Workflow Changes
 
-The existing `ci.yml` needs two modifications:
+The existing `ci.yml` was extended to include the deploy job and updated triggers:
 
-**1. Add push trigger** ([research.md R4](./research.md#r4-ci-check-verification-in-cd-workflows)): Add `push: branches: [main]` to the `on:` block. Without this, CI does not run on pushes to `main`, and the CD workflow's `workflow_run` trigger will never fire.
+**1. Add push and workflow_dispatch triggers**: `push: branches: [main]` triggers CI+CD on merges to main. `workflow_dispatch` enables manual deployment recovery.
 
-**2. Fix concurrency group**: The current group `ci-${{ github.event.pull_request.number }}` is undefined for push events (no PR context). Change to `ci-${{ github.ref }}` which resolves to `ci-refs/pull/123/merge` for PRs and `ci-refs/heads/main` for pushes — unique per trigger source.
+**2. Fix concurrency group**: Changed from `ci-${{ github.event.pull_request.number }}` (undefined for push events) to `ci-${{ github.ref }}` which resolves to `ci-refs/pull/123/merge` for PRs and `ci-refs/heads/main` for pushes.
 
-Complete diff:
+**3. Conditional cancel-in-progress**: Changed from `true` to `${{ github.event_name == 'pull_request' }}` so stale PR runs are cancelled but in-flight main pushes (which include the deploy job) are never cancelled.
 
-```diff
- on:
-   pull_request:
-     branches: [develop]
-     types: [opened, synchronize, reopened]
-+  push:
-+    branches: [main]
+**4. Inline deploy job**: Added a `deploy` job with `if: github.ref == 'refs/heads/main'` and `needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit]`. The deploy job has its own concurrency group and elevated permissions.
 
- concurrency:
--  group: ci-${{ github.event.pull_request.number }}
-+  group: ci-${{ github.ref }}
-   cancel-in-progress: true
-```
-
-The CI jobs themselves are unchanged — the same lint, typecheck, format-check, unit-tests, e2e-tests, and dependency-audit jobs run on both PR events and push events.
+> **Architecture note**: The original design used a separate `cd.yml` with a `workflow_run` trigger chained to CI completion. This was replaced because `workflow_run`'s `branches` filter does not reliably filter out PR-triggered CI completions, causing spurious deployments. The inline approach is simpler and eliminates this class of bugs entirely.
 
 ---
 
