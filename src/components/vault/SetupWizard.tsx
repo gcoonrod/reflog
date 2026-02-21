@@ -28,7 +28,9 @@ export function SetupWizard() {
     setError(null);
 
     if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-      setError(`Passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters`);
+      setError(
+        `Passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters`,
+      );
       return;
     }
 
@@ -41,88 +43,86 @@ export function SetupWizard() {
     try {
       await setup(passphrase);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create vault",
-      );
+      setError(err instanceof Error ? err.message : "Failed to create vault");
       setLoading(false);
     }
   }
 
   return (
     <main>
-    <Center h="100vh">
-      <Paper p="xl" w={400} withBorder>
-        <form
-          onSubmit={(e) => {
-            void handleSubmit(e);
-          }}
-        >
-          <Stack gap="md">
-            <Title order={2} ta="center">
-              Create Your Vault
-            </Title>
+      <Center h="100vh">
+        <Paper p="xl" w={400} withBorder>
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
+          >
+            <Stack gap="md">
+              <Title order={2} ta="center">
+                Create Your Vault
+              </Title>
 
-            <Text size="sm" c="dimmed" ta="center">
-              Choose a passphrase to encrypt your journal. This passphrase
-              cannot be recovered — if you forget it, your data will be
-              permanently inaccessible.
-            </Text>
-
-            <Alert color="yellow" variant="light">
-              <Text size="xs">
-                There is no password recovery. Write down your passphrase
-                somewhere safe.
+              <Text size="sm" c="dimmed" ta="center">
+                Choose a passphrase to encrypt your journal. This passphrase
+                cannot be recovered — if you forget it, your data will be
+                permanently inaccessible.
               </Text>
-            </Alert>
 
-            <PasswordInput
-              label="Passphrase"
-              placeholder="Enter passphrase (min 8 characters)"
-              value={passphrase}
-              onChange={(e) => {
-                setPassphrase(e.currentTarget.value);
-              }}
-              error={
-                passphrase.length > 0 &&
-                passphrase.length < MIN_PASSPHRASE_LENGTH
-                  ? `Min ${MIN_PASSPHRASE_LENGTH} characters`
-                  : undefined
-              }
-              autoFocus
-            />
+              <Alert color="yellow" variant="light">
+                <Text size="xs">
+                  There is no password recovery. Write down your passphrase
+                  somewhere safe.
+                </Text>
+              </Alert>
 
-            <PasswordInput
-              label="Confirm Passphrase"
-              placeholder="Re-enter passphrase"
-              value={confirm}
-              onChange={(e) => {
-                setConfirm(e.currentTarget.value);
-              }}
-              error={
-                confirm.length > 0 && passphrase !== confirm
-                  ? "Does not match"
-                  : undefined
-              }
-            />
+              <PasswordInput
+                label="Passphrase"
+                placeholder="Enter passphrase (min 8 characters)"
+                value={passphrase}
+                onChange={(e) => {
+                  setPassphrase(e.currentTarget.value);
+                }}
+                error={
+                  passphrase.length > 0 &&
+                  passphrase.length < MIN_PASSPHRASE_LENGTH
+                    ? `Min ${MIN_PASSPHRASE_LENGTH} characters`
+                    : undefined
+                }
+                autoFocus
+              />
 
-            {error && (
-              <Text size="sm" c="red">
-                {error}
-              </Text>
-            )}
+              <PasswordInput
+                label="Confirm Passphrase"
+                placeholder="Re-enter passphrase"
+                value={confirm}
+                onChange={(e) => {
+                  setConfirm(e.currentTarget.value);
+                }}
+                error={
+                  confirm.length > 0 && passphrase !== confirm
+                    ? "Does not match"
+                    : undefined
+                }
+              />
 
-            <Button
-              type="submit"
-              fullWidth
-              disabled={!isValid}
-              loading={loading}
-            >
-              Create Vault
-            </Button>
-          </Stack>
-        </form>
-      </Paper>
-    </Center>
+              {error && (
+                <Text size="sm" c="red">
+                  {error}
+                </Text>
+              )}
+
+              <Button
+                type="submit"
+                fullWidth
+                disabled={!isValid}
+                loading={loading}
+              >
+                Create Vault
+              </Button>
+            </Stack>
+          </form>
+        </Paper>
+      </Center>
     </main>
   );
 }

@@ -1,7 +1,8 @@
 import type { KeyboardShortcut } from "@/types";
 
 const isMac =
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 const shortcuts = new Map<string, KeyboardShortcut>();
 

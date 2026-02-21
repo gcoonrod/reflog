@@ -29,7 +29,9 @@ export function TagInput({ tags, onChange }: TagInputProps) {
         placeholder="Add tag and press Enter..."
         size="xs"
         value={value}
-        onChange={(e) => { setValue(e.currentTarget.value); }}
+        onChange={(e) => {
+          setValue(e.currentTarget.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && value.trim()) {
             e.preventDefault();
@@ -40,11 +42,7 @@ export function TagInput({ tags, onChange }: TagInputProps) {
       {tags.length > 0 && (
         <Group gap={4} mt="xs">
           {tags.map((tag) => (
-            <TagBadge
-              key={tag}
-              tag={tag}
-              onClick={removeTag}
-            />
+            <TagBadge key={tag} tag={tag} onClick={removeTag} />
           ))}
         </Group>
       )}

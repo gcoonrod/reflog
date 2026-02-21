@@ -128,7 +128,6 @@ function createEncryptedTable(
         }));
       });
     },
-
   };
 }
 

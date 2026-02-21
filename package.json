@@ -48,6 +48,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "latest",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "latest",
     "fake-indexeddb": "latest",
@@ -55,7 +56,7 @@
     "postcss": "latest",
     "postcss-preset-mantine": "latest",
     "postcss-simple-vars": "latest",
-    "prettier": "latest",
+    "prettier": "^3.8.1",
     "typescript": "^5.7.0",
     "typescript-eslint": "latest",
     "vite": "^7.3.1",
@@ -64,5 +65,8 @@
     "vitest": "latest",
     "workbox-build": "^7.4.0",
     "workbox-window": "^7.4.0"
+  },
+  "resolutions": {
+    "minimatch": "^10.2.1"
   }
 }

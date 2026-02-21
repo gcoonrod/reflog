@@ -29,17 +29,12 @@ export async function getById(id: string): Promise<Entry | null> {
   return entry ?? null;
 }
 
-export async function list(
-  options?: {
-    tags?: string[];
-    limit?: number;
-    offset?: number;
-  },
-): Promise<Entry[]> {
-  let results = await db.entries
-    .where("status")
-    .equals("published")
-    .toArray();
+export async function list(options?: {
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+}): Promise<Entry[]> {
+  let results = await db.entries.where("status").equals("published").toArray();
 
   // Sort by createdAt descending (reverse chronological)
   results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -137,10 +132,7 @@ export async function getDraft(entryId?: string): Promise<Entry | null> {
   }
 
   // Find any new (non-associated) draft
-  const drafts = await db.entries
-    .where("status")
-    .equals("draft")
-    .toArray();
+  const drafts = await db.entries.where("status").equals("draft").toArray();
 
   return drafts[0] ?? null;
 }

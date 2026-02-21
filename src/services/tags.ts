@@ -42,7 +42,10 @@ export function extractFromBody(body: string): string[] {
  * Merge tags from body extraction and explicit tag input.
  * Deduplicates and normalizes.
  */
-export function mergeTags(bodyTags: string[], explicitTags: string[]): string[] {
+export function mergeTags(
+  bodyTags: string[],
+  explicitTags: string[],
+): string[] {
   const merged = new Set<string>();
 
   for (const tag of bodyTags) {
