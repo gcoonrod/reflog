@@ -297,6 +297,12 @@ jobs:
         if: steps.version.outputs.skip == 'false'
         run: yarn build
 
+      # TanStack Start outputs _shell.html as the SPA entry point.
+      # Cloudflare Pages requires index.html to serve the root route.
+      - name: Copy SPA shell to index.html
+        if: steps.version.outputs.skip == 'false'
+        run: cp dist/client/_shell.html dist/client/index.html
+
       # --- Deploy to Cloudflare Pages (R1) ---
       # Uses the official wrangler-action which handles authentication
       # and exposes the deployment URL as a step output.
