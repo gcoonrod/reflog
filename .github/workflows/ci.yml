@@ -6,10 +6,13 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+  workflow_dispatch: # Manual trigger for deployment recovery
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel in-progress runs for PRs (stale checks), but never for main
+  # pushes or manual triggers — a deploy may be in flight.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -151,3 +154,124 @@ jobs:
             }
             console.log('PASS: No critical/high vulnerabilities');
           "
+
+  # --- Deployment (main only) ---
+  # Runs after all CI jobs pass, only on push to main or manual dispatch.
+  # This replaces the separate cd.yml workflow to avoid unreliable
+  # workflow_run branch filtering.
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit]
+    runs-on: ubuntu-24.04
+    # Queue deployments, never cancel in-progress. Separate from the CI
+    # concurrency group so a new CI run can't cancel a running deploy.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # --- Version Guard ---
+      # Compare package.json version against existing git tags.
+      # If v<version> tag already exists, skip deployment (exit 0, not failure).
+      - name: Check version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Version $VERSION already deployed (tag v$VERSION exists). Skipping."
+            echo "## Deployment Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Version **$VERSION** is already deployed (tag \`v$VERSION\` exists)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "New version detected: $VERSION"
+          fi
+
+      # --- Changelog Guard ---
+      # Verify CHANGELOG.md exists and contains an entry for this version.
+      - name: Verify changelog entry
+        if: steps.version.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::error::CHANGELOG.md not found. Create a CHANGELOG.md with a '## [$VERSION]' section before deploying."
+            echo "## Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**CHANGELOG.md** file not found in repository root." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if ! grep -qE "^## \[${VERSION}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for version $VERSION. Add a '## [$VERSION]' section before deploying."
+            echo "## Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Missing CHANGELOG.md entry for version **$VERSION**." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Changelog entry found for version $VERSION"
+
+      # --- Build ---
+      - name: Setup Node.js
+        if: steps.version.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        if: steps.version.outputs.skip == 'false'
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        if: steps.version.outputs.skip == 'false'
+        run: yarn build
+
+      # TanStack Start outputs _shell.html as the SPA entry point.
+      # Cloudflare Pages requires index.html to serve the root route.
+      - name: Copy SPA shell to index.html
+        if: steps.version.outputs.skip == 'false'
+        run: cp dist/client/_shell.html dist/client/index.html
+
+      # --- Deploy to Cloudflare Pages ---
+      - name: Deploy to Cloudflare Pages
+        if: steps.version.outputs.skip == 'false'
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/client --project-name=reflog --branch=main --commit-hash=${{ github.sha }}
+
+      # --- Post-Deployment: Tag and Summary ---
+      - name: Create git tag
+        if: steps.version.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Write deployment summary
+        if: steps.version.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          echo "## Deployment Successful" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version**: $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag**: \`v$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **URL**: $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Production**: https://reflog.microcode.io" >> "$GITHUB_STEP_SUMMARY"
