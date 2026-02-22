@@ -99,8 +99,16 @@ export const syncMiddleware: Middleware<DBCore> = {
                   for (const entry of entries) {
                     store.add(entry);
                   }
-                  tx.oncomplete = () => { resolve(result); };
-                  tx.onerror = () => { reject(new Error(tx.error?.message ?? "sync_queue transaction failed")); };
+                  tx.oncomplete = () => {
+                    resolve(result);
+                  };
+                  tx.onerror = () => {
+                    reject(
+                      new Error(
+                        tx.error?.message ?? "sync_queue transaction failed",
+                      ),
+                    );
+                  };
                 });
               }
               return result;

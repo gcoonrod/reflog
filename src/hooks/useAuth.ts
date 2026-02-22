@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 
+const AUTH_DISABLED = import.meta.env.VITE_AUTH_DISABLED === "true";
+
 export interface AuthUser {
   sub: string;
   email: string;
@@ -18,7 +20,32 @@ export interface AuthState {
   getToken: () => Promise<string>;
 }
 
+const MOCK_AUTH_STATE: AuthState = {
+  isAuthenticated: true,
+  isLoading: false,
+  user: {
+    sub: "test|e2e",
+    email: "e2e@test.local",
+    emailVerified: true,
+    name: "E2E Test User",
+    picture: "",
+  },
+  login: () => {},
+  logout: () => {},
+  getToken: () => Promise.resolve("mock-token"),
+};
+
 export function useAuth(): AuthState {
+  // When auth is disabled (E2E tests), return mock state without
+  // calling useAuth0 — Auth0Provider is not in the component tree.
+  if (AUTH_DISABLED) {
+    return MOCK_AUTH_STATE;
+  }
+
+  return useAuthReal();
+}
+
+function useAuthReal(): AuthState {
   const {
     isAuthenticated,
     isLoading,

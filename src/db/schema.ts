@@ -36,33 +36,39 @@ export function createDB(name = "ReflogDB"): ReflogDB {
     settings: "key",
   });
 
-  db.version(2).stores({
-    vault_meta: "id",
-    entries:
-      "id, status, createdAt, updatedAt, deletedAt, [status+deletedAt+createdAt]",
-    settings: "key",
-    sync_queue: "++id, [tableName+recordId], timestamp",
-    sync_meta: "key",
-  }).upgrade(tx => {
-    // Backfill new fields on existing entries.
-    // Both middlewares must be bypassed during upgrades:
-    // - Encryption: vault key isn't available yet, and this only touches
-    //   non-encrypted fields (syncVersion, deletedAt)
-    // - Sync tracking: backfill mutations shouldn't be queued for sync
-    setUpgrading(true);
-    setSyncing(true);
-    return tx.table("entries").toCollection().modify((entry: Record<string, unknown>) => {
-      if (entry.syncVersion === undefined) {
-        entry.syncVersion = 0;
-      }
-      if (entry.deletedAt === undefined) {
-        entry.deletedAt = null;
-      }
-    }).finally(() => {
-      setUpgrading(false);
-      setSyncing(false);
+  db.version(2)
+    .stores({
+      vault_meta: "id",
+      entries:
+        "id, status, createdAt, updatedAt, deletedAt, [status+deletedAt+createdAt]",
+      settings: "key",
+      sync_queue: "++id, [tableName+recordId], timestamp",
+      sync_meta: "key",
+    })
+    .upgrade((tx) => {
+      // Backfill new fields on existing entries.
+      // Both middlewares must be bypassed during upgrades:
+      // - Encryption: vault key isn't available yet, and this only touches
+      //   non-encrypted fields (syncVersion, deletedAt)
+      // - Sync tracking: backfill mutations shouldn't be queued for sync
+      setUpgrading(true);
+      setSyncing(true);
+      return tx
+        .table("entries")
+        .toCollection()
+        .modify((entry: Record<string, unknown>) => {
+          if (entry.syncVersion === undefined) {
+            entry.syncVersion = 0;
+          }
+          if (entry.deletedAt === undefined) {
+            entry.deletedAt = null;
+          }
+        })
+        .finally(() => {
+          setUpgrading(false);
+          setSyncing(false);
+        });
     });
-  });
 
   return db;
 }

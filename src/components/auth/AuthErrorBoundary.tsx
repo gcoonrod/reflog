@@ -35,7 +35,8 @@ export class AuthErrorBoundary extends Component<Props, State> {
 
   render(): ReactNode {
     if (this.state.hasError) {
-      const message = this.state.error?.message ?? "An authentication error occurred.";
+      const message =
+        this.state.error?.message ?? "An authentication error occurred.";
 
       return (
         <Center h="100vh">
@@ -48,11 +49,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
               <Button variant="light" onClick={this.handleRetry}>
                 Try again
               </Button>
-              <Button
-                variant="light"
-                color="red"
-                onClick={this.handleLogout}
-              >
+              <Button variant="light" color="red" onClick={this.handleLogout}>
                 Log out
               </Button>
             </Group>

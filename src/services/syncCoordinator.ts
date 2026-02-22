@@ -65,7 +65,9 @@ export function start(options: {
 
           // Hold the lock until the tab closes or stop() is called
           return new Promise<void>((resolve) => {
-            lockController?.signal.addEventListener("abort", () => { resolve(); });
+            lockController?.signal.addEventListener("abort", () => {
+              resolve();
+            });
           });
         },
       );

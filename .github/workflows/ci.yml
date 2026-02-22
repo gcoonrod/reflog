@@ -105,7 +105,10 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - run: yarn build
+      - name: Build (auth disabled for E2E)
+        run: yarn build
+        env:
+          VITE_AUTH_DISABLED: "true"
       - run: yarn test:e2e
 
       - name: Upload Playwright report

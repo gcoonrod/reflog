@@ -64,8 +64,9 @@ function MigratePage() {
           Sync Your Data
         </Title>
         <Text c="dimmed" ta="center" size="sm">
-          Your existing journal entries are stored locally on this device. Enable
-          sync to access them from all your devices with end-to-end encryption.
+          Your existing journal entries are stored locally on this device.
+          Enable sync to access them from all your devices with end-to-end
+          encryption.
         </Text>
 
         {error && (

@@ -49,11 +49,7 @@ export function SyncIndicator() {
         aria-label={config.label}
         style={{ cursor: "default" }}
       >
-        {state === "syncing" ? (
-          <Loader size={16} />
-        ) : (
-          <Icon size={18} />
-        )}
+        {state === "syncing" ? <Loader size={16} /> : <Icon size={18} />}
       </ActionIcon>
     </Tooltip>
   );

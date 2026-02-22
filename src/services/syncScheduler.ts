@@ -33,10 +33,7 @@ function handleOnline(): void {
   void triggerSync();
 }
 
-export function start(
-  getToken: () => Promise<string>,
-  key: CryptoKey,
-): void {
+export function start(getToken: () => Promise<string>, key: CryptoKey): void {
   getTokenFn = getToken;
   cryptoKeyRef = key;
 

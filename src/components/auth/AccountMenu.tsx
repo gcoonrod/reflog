@@ -178,10 +178,7 @@ export function AccountMenu() {
             {exporting ? "Exporting..." : "Export Data"}
           </Menu.Item>
 
-          <Menu.Item
-            leftSection={<IconLock size={16} />}
-            onClick={handleLock}
-          >
+          <Menu.Item leftSection={<IconLock size={16} />} onClick={handleLock}>
             Lock
           </Menu.Item>
 
@@ -189,7 +186,9 @@ export function AccountMenu() {
 
           <Menu.Item
             leftSection={<IconLogout size={16} />}
-            onClick={() => { setLogoutModalOpen(true); }}
+            onClick={() => {
+              setLogoutModalOpen(true);
+            }}
           >
             Log out
           </Menu.Item>
@@ -197,7 +196,9 @@ export function AccountMenu() {
           <Menu.Item
             color="red"
             leftSection={<IconTrash size={16} />}
-            onClick={() => { setDeleteModalOpen(true); }}
+            onClick={() => {
+              setDeleteModalOpen(true);
+            }}
           >
             Delete Account
           </Menu.Item>
@@ -206,7 +207,9 @@ export function AccountMenu() {
 
       <Modal
         opened={logoutModalOpen}
-        onClose={() => { setLogoutModalOpen(false); }}
+        onClose={() => {
+          setLogoutModalOpen(false);
+        }}
         title="Log out"
         centered
         size="sm"
@@ -216,13 +219,20 @@ export function AccountMenu() {
             Would you like to keep your local data on this device or clear it?
           </Text>
           <Group grow>
-            <Button variant="light" onClick={() => { handleLogout(false); }}>
+            <Button
+              variant="light"
+              onClick={() => {
+                handleLogout(false);
+              }}
+            >
               Keep local data
             </Button>
             <Button
               color="red"
               variant="light"
-              onClick={() => { handleLogout(true); }}
+              onClick={() => {
+                handleLogout(true);
+              }}
             >
               Clear local data
             </Button>
@@ -248,7 +258,9 @@ export function AccountMenu() {
           <TextInput
             label={`Type "${user?.email ?? ""}" to confirm`}
             value={deleteConfirmEmail}
-            onChange={(e) => { setDeleteConfirmEmail(e.currentTarget.value); }}
+            onChange={(e) => {
+              setDeleteConfirmEmail(e.currentTarget.value);
+            }}
             placeholder="Enter your email"
           />
           <Button
