@@ -39,3 +39,6 @@ dev-dist/
 
 # Vitest
 vitest.config.ts.timestamp-*
+
+# Wrangler local state
+.wrangler/

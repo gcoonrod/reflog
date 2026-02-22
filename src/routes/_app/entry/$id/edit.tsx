@@ -17,7 +17,7 @@ import { useStorageUsage } from "@/hooks/useStorageUsage";
 import * as entryService from "@/services/entries";
 import { extractFromBody, mergeTags } from "@/services/tags";
 
-export const Route = createFileRoute("/entry/$id/edit")({
+export const Route = createFileRoute("/_app/entry/$id/edit")({
   component: EditEntryPage,
 });
 

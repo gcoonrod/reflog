@@ -19,7 +19,7 @@ import { useStorageUsage } from "@/hooks/useStorageUsage";
 import { extractFromBody, mergeTags } from "@/services/tags";
 import { defaultEntryTitle } from "@/utils/date";
 
-export const Route = createFileRoute("/entry/new")({
+export const Route = createFileRoute("/_app/entry/new")({
   component: NewEntryPage,
 });
 

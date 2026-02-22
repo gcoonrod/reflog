@@ -1,12 +1,11 @@
+import { lazy, Suspense } from "react";
 import {
   Outlet,
   HeadContent,
   Scripts,
   createRootRoute,
-  useNavigate,
   Link,
 } from "@tanstack/react-router";
-import { useCallback } from "react";
 import {
   MantineProvider,
   ColorSchemeScript,
@@ -17,16 +16,16 @@ import {
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { VaultProvider, useVault } from "@/hooks/useVault";
-import { useAutoLock } from "@/hooks/useAutoLock";
-import { useKeyboard } from "@/hooks/useKeyboard";
-import { SearchPalette } from "@/components/search/SearchPalette";
-import { ReloadPrompt } from "@/components/common/ReloadPrompt";
-import { StorageWarning } from "@/components/common/StorageWarning";
-import { MultiTabWarning } from "@/components/common/MultiTabWarning";
+import { AuthErrorBoundary } from "@/components/auth/AuthErrorBoundary";
 import { theme, cssResolver } from "@/theme";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+
+// Lazy-load Auth0Provider to avoid SSR prerender failure
+// (@auth0/auth0-spa-js references `self` at module evaluation time)
+const Auth0ProviderClient = lazy(
+  () => import("@/components/auth/Auth0ProviderClient"),
+);
 
 function NotFoundComponent() {
   return (
@@ -51,33 +50,6 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundComponent,
 });
 
-function AutoLockWatcher() {
-  useAutoLock();
-  return null;
-}
-
-function GlobalShortcuts() {
-  const navigate = useNavigate();
-  const { status } = useVault();
-
-  const handleNewEntry = useCallback(() => {
-    if (status === "unlocked") {
-      void navigate({ to: "/entry/new" });
-    }
-  }, [status, navigate]);
-
-  useKeyboard(
-    {
-      keys: "mod+n",
-      handler: handleNewEntry,
-      description: "Create new entry",
-    },
-    [handleNewEntry],
-  );
-
-  return null;
-}
-
 function RootComponent() {
   return (
     <html lang="en">
@@ -96,27 +68,26 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body>
-        <MantineProvider
-          theme={theme}
-          defaultColorScheme="dark"
-          cssVariablesResolver={cssResolver}
-        >
-          <ErrorBoundary>
-            <Notifications position="top-right" />
-            <VaultProvider>
-              <AutoLockWatcher />
-              <GlobalShortcuts />
-              <ErrorBoundary fallback={null}>
-                <SearchPalette />
-              </ErrorBoundary>
-              <ReloadPrompt />
-              <StorageWarning>
-                <MultiTabWarning />
-                <Outlet />
-              </StorageWarning>
-            </VaultProvider>
-          </ErrorBoundary>
-        </MantineProvider>
+        <Suspense fallback={null}>
+          <Auth0ProviderClient>
+            <MantineProvider
+              theme={theme}
+              defaultColorScheme="dark"
+              cssVariablesResolver={cssResolver}
+            >
+              <AuthErrorBoundary
+                onLogout={() => {
+                  window.location.href = "/login";
+                }}
+              >
+                <ErrorBoundary>
+                  <Notifications position="top-right" />
+                  <Outlet />
+                </ErrorBoundary>
+              </AuthErrorBoundary>
+            </MantineProvider>
+          </Auth0ProviderClient>
+        </Suspense>
         <Scripts />
       </body>
     </html>

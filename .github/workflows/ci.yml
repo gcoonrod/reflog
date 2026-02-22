@@ -122,6 +122,17 @@ jobs:
           name: e2e-traces
           path: test-results/
 
+  worker-typecheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - run: cd workers/sync-api && yarn install --frozen-lockfile
+      - run: cd workers/sync-api && yarn typecheck
+
   dependency-audit:
     runs-on: ubuntu-24.04
     steps:
@@ -161,7 +172,7 @@ jobs:
   # workflow_run branch filtering.
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit]
+    needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit, worker-typecheck]
     runs-on: ubuntu-24.04
     # Queue deployments, never cancel in-progress. Separate from the CI
     # concurrency group so a new CI run can't cancel a running deploy.

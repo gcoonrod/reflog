@@ -1,0 +1,392 @@
+openapi: 3.0.3
+info:
+  title: Reflog Sync API
+  description: |
+    End-to-end encrypted sync API for Reflog journal entries.
+    All payloads are encrypted client-side — the server stores only opaque blobs.
+    Authentication via Auth0 RS256 JWTs.
+  version: 1.0.0
+
+servers:
+  - url: https://reflog-sync-api.greg-coonrod.workers.dev/api/v1
+    description: Production (Cloudflare Worker via workers.dev)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /sync/push:
+    post:
+      summary: Push local changes to server
+      description: |
+        Accepts a batch of encrypted sync records from the client.
+        Server assigns timestamps (LWW), checks storage quota, and returns
+        any conflicts detected against records modified since `lastPullTimestamp`.
+      tags: [Sync]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRequest'
+      responses:
+        '200':
+          description: Push accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Payload too large (exceeds per-request size limit)
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '507':
+          description: Storage quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaExceededError'
+
+  /sync/pull:
+    get:
+      summary: Pull remote changes from server
+      description: |
+        Returns all encrypted sync records modified since `since` timestamp.
+        Supports cursor-based pagination for large result sets.
+      tags: [Sync]
+      parameters:
+        - name: since
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: ISO 8601 timestamp. Use "1970-01-01T00:00:00Z" for initial pull.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Pagination cursor from previous response.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+          description: Max records per page.
+      responses:
+        '200':
+          description: Changes since timestamp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /devices/register:
+    post:
+      summary: Register a new device
+      description: |
+        Registers the current browser/device for the authenticated user.
+        Returns a device ID that must be included in sync push requests.
+        Limited to 10 devices per user.
+      tags: [Devices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '201':
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Device limit reached (max 10 per user)
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /devices/{deviceId}:
+    delete:
+      summary: Unregister a device
+      tags: [Devices]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Device unregistered
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Device not found
+
+  /account:
+    delete:
+      summary: Delete user account and all server-side data
+      description: |
+        Permanently deletes the user account, all devices, and all sync records.
+        This action is irreversible. Client-side data is not affected.
+      tags: [Account]
+      responses:
+        '204':
+          description: Account deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /account/usage:
+    get:
+      summary: Get account storage usage
+      tags: [Account]
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountUsage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /account/export:
+    get:
+      summary: Export all encrypted user data
+      description: |
+        Returns all sync records for the authenticated user as a single JSON array.
+        Data remains encrypted — client must decrypt after download.
+      tags: [Account]
+      responses:
+        '200':
+          description: All encrypted records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Auth0-issued RS256 JWT access token
+
+  schemas:
+    SyncRecord:
+      type: object
+      required: [id, recordType, encryptedPayload, deviceId]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated record UUID
+        recordType:
+          type: string
+          enum: [entry, setting, vault_meta]
+        encryptedPayload:
+          type: string
+          description: Base64-encoded AES-256-GCM ciphertext
+          maxLength: 350000
+        isTombstone:
+          type: boolean
+          default: false
+        deviceId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          description: Server-assigned version (returned in pull responses)
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: Server-assigned timestamp (returned in pull responses)
+          readOnly: true
+
+    PushRequest:
+      type: object
+      required: [changes, deviceId, lastPullTimestamp]
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRecord'
+          maxItems: 100
+          description: Batch of encrypted records to push
+        deviceId:
+          type: string
+          format: uuid
+        lastPullTimestamp:
+          type: string
+          format: date-time
+          description: Timestamp of last successful pull (for conflict detection)
+
+    PushResponse:
+      type: object
+      required: [accepted, conflicts, serverTimestamp]
+      properties:
+        accepted:
+          type: integer
+          description: Number of records accepted
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRecord'
+          description: Server versions of records that conflict with pushed changes
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: Server time at push completion (use as next lastPullTimestamp)
+
+    PullResponse:
+      type: object
+      required: [changes, hasMore, serverTimestamp]
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRecord'
+        hasMore:
+          type: boolean
+          description: True if additional pages are available
+        cursor:
+          type: string
+          description: Cursor for next page (present only if hasMore is true)
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: Server time at pull completion
+
+    DeviceRegistration:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          description: User-agent string or user-provided device name
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        registeredAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+
+    AccountUsage:
+      type: object
+      properties:
+        storageUsedBytes:
+          type: integer
+        storageQuotaBytes:
+          type: integer
+        recordCount:
+          type: integer
+        deviceCount:
+          type: integer
+
+    ExportResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRecord'
+        exportedAt:
+          type: string
+          format: date-time
+
+    QuotaExceededError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: storage_quota_exceeded
+        storageUsedBytes:
+          type: integer
+        storageQuotaBytes:
+          type: integer
+        message:
+          type: string
+          example: "Account storage quota exceeded. Delete entries or contact support."
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until the rate limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
