@@ -23,7 +23,7 @@ const RECORD_TYPE_TO_TABLE: Record<SyncRecord["recordType"], string> = {
  * Derives length from the highest numeric key + 1 so sparse or
  * non-contiguous indices don't silently truncate the buffer.
  */
-function toUint8Array(obj: Record<string, number>): Uint8Array {
+export function toUint8Array(obj: Record<string, number>): Uint8Array {
   const numericKeys = Object.keys(obj)
     .map(Number)
     .filter((k) => Number.isInteger(k) && k >= 0);
@@ -43,7 +43,7 @@ function toUint8Array(obj: Record<string, number>): Uint8Array {
  * fields ({ciphertext, iv} as plain objects from JSON round-trip).
  * Detect and decrypt them so applyChange receives plaintext.
  */
-async function unwrapLegacyEncryptedFields(
+export async function unwrapLegacyEncryptedFields(
   record: Record<string, unknown>,
   key: CryptoKey,
 ): Promise<Record<string, unknown>> {
