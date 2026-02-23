@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-02-23
+
+### Fixed
+- CI deploy build missing Vite environment variables (Auth0 domain, client ID, audience, sync API URL), causing Auth0 login redirect to fail with `undefined` domain
+
 ## [1.0.0] - 2026-02-23
 
 ### Added
