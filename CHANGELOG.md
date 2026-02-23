@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-02-23
+
+### Fixed
+- D1 `sync_records` table stuck with old single-column PK (`id`) from initial deploy; `ON CONFLICT(user_id, id)` upsert caused 500 on sync push. Recreated table with correct composite PK `(user_id, id)`
+
 ## [1.0.3] - 2026-02-23
 
 ### Fixed
