@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-02-23
+
+### Fixed
+- Sync API CORS rejecting requests from Cloudflare Pages deployment URL (`reflog-8t5.pages.dev`), causing sync push/pull to fail with `net::ERR_FAILED`
+
 ## [1.0.1] - 2026-02-23
 
 ### Fixed
