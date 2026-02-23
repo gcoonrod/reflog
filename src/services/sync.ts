@@ -210,7 +210,10 @@ export async function pull(
             emit({
               type: "conflict-resolved",
               detail: {
-                conflictTitle: (decrypted as Entry).title,
+                conflictTitle:
+                  typeof (decrypted as Entry).title === "string"
+                    ? (decrypted as Entry).title
+                    : undefined,
                 conflictType: "updated",
               },
             });
