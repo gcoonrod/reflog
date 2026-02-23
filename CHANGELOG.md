@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-02-23
+
+### Fixed
+- `VITE_SYNC_API_URL` secret missing `/api/v1` path prefix, causing all sync API calls (device registration, push, pull) to hit 404
+
 ## [1.0.2] - 2026-02-23
 
 ### Fixed
