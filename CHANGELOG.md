@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-02-23
+
+### Fixed
+- Exclude `vault_meta` from sync pipeline — binary fields (`Uint8Array` salt, IV) lose their TypedArray type through JSON round-trip, causing PBKDF2 `deriveKey` to fail with "salt: Not a BufferSource" on unlock after sync
+
 ## [1.0.6] - 2026-02-23
 
 ### Fixed

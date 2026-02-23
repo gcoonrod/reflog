@@ -87,7 +87,7 @@ export const pushValidationMiddleware: MiddlewareHandler<AppEnv> = async (
     );
   }
 
-  const VALID_RECORD_TYPES = new Set(["entry", "setting", "vault_meta"]);
+  const VALID_RECORD_TYPES = new Set(["entry", "setting"]);
 
   for (let i = 0; i < body.changes.length; i++) {
     const rec = body.changes[i] as Record<string, unknown>;
@@ -101,7 +101,7 @@ export const pushValidationMiddleware: MiddlewareHandler<AppEnv> = async (
 
     if (typeof rec.recordType !== "string" || !VALID_RECORD_TYPES.has(rec.recordType)) {
       return c.json(
-        { error: "bad_request", message: `changes[${i}].recordType must be one of: entry, setting, vault_meta` },
+        { error: "bad_request", message: `changes[${i}].recordType must be one of: entry, setting` },
         400,
       );
     }
