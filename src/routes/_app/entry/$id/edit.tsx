@@ -16,6 +16,7 @@ import { useKeyboard } from "@/hooks/useKeyboard";
 import { useStorageUsage } from "@/hooks/useStorageUsage";
 import * as entryService from "@/services/entries";
 import { extractFromBody, mergeTags } from "@/services/tags";
+import { AppHeaderActions } from "@/components/layout/AppHeaderActions";
 
 export const Route = createFileRoute("/_app/entry/$id/edit")({
   component: EditEntryPage,
@@ -98,6 +99,7 @@ function EditEntryPage() {
             >
               Save
             </Button>
+            <AppHeaderActions />
           </Group>
         </Group>
       </AppShell.Header>

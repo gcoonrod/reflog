@@ -134,10 +134,10 @@
 
 - [x] T044 [US4] Implement rate limiting middleware at `workers/sync-api/src/middleware/rateLimit.ts`: use Cloudflare's built-in Rate Limiting binding (see [quickstart.md § A5](./quickstart.md#a5-rate-limiting-strategy-t007-t044) for strategy rationale). Add `[[rate_limits]]` bindings to `workers/sync-api/wrangler.toml` (see [quickstart.md § Complete wrangler.toml Reference](./quickstart.md#complete-wrangler-toml-reference) for exact config). Two limiters: (1) `RATE_LIMITER_IP` for unauthenticated endpoints (100 requests/60s, keyed by IP), (2) `RATE_LIMITER_USER` for authenticated endpoints (200 requests/60s, keyed by userId). Usage: `const { success } = await env.RATE_LIMITER_USER.limit({ key: userId })`. Return 429 with `Retry-After` header per [contracts/sync-api.yaml § responses/RateLimited](./contracts/sync-api.yaml). See [research.md R2 § Rate Limiting](./research.md#r2-cloudflare-workers--d1-for-sync-api-backend).
 - [x] T045 [P] [US4] Implement request validation middleware at `workers/sync-api/src/middleware/validation.ts`: reject requests with `Content-Length > 256KB` (413 per [contracts/sync-api.yaml § 413 response](./contracts/sync-api.yaml)), validate `Content-Type: application/json` for POST requests, validate required fields in push request body (`changes` array with max 100 items, `deviceId`, `lastPullTimestamp` — per [contracts/sync-api.yaml § PushRequest](./contracts/sync-api.yaml)). Validate `encryptedPayload` max length (350,000 chars per SyncRecord schema). Apply to sync endpoints.
-- [ ] T046 [US4] ⏳ **MANUAL**: Configure Auth0 bot detection for account creation throttling in Auth0 Dashboard > Security > Bot Detection. Enable CAPTCHA challenge for suspicious signup attempts. This leverages Auth0's built-in bot detection rather than custom CAPTCHA implementation.
+- [x] T046 [US4] ~~**MANUAL**: Configure Auth0 bot detection~~ — **DESCOPED**: Bot Detection requires an Auth0 Enterprise subscription, which is out of scope for this project. Account creation throttling relies on Auth0's built-in Attack Protection (brute-force protection, suspicious IP throttling, breached password detection) configured in T005, plus the server-side IP rate limiting in T044.
 - [x] T047 [US4] Implement tombstone garbage collection as a scheduled Worker: add `[triggers] crons = ["0 3 * * *"]` to `wrangler.toml` (see [quickstart.md § Complete wrangler.toml Reference](./quickstart.md#complete-wrangler-toml-reference)). In the `scheduled` event handler in `workers/sync-api/src/index.ts`, delete from `sync_records` where `is_tombstone = 1 AND updated_at < datetime('now', '-90 days')` using the `idx_sync_records_tombstone_gc` index ([data-model.md § sync_records indexes](./data-model.md#sync_records)). Log the number of purged records. See [research.md R3 § Tombstone-Based Soft Deletes](./research.md#r3-end-to-end-encrypted-sync-protocol-design) for the 90-day retention rationale.
 
-**Checkpoint**: Rate limiting is active on all endpoints. Oversized requests are rejected. Auth0 bot detection protects account creation. Tombstones are garbage-collected after 90 days.
+**Checkpoint**: Rate limiting is active on all endpoints. Oversized requests are rejected. Auth0 Attack Protection (brute-force, suspicious IP, breached password) is configured. Tombstones are garbage-collected after 90 days.
 
 ---
 
@@ -294,7 +294,7 @@ T001 → T002 ‖ T003 ‖ T004 → T005/T006 (manual)
   → T015-T023 (US1, sequential)
   → T024 ‖ T025, then T026-T028 (US3)
   → T029-T032 (server) → T033-T043 (client sync)
-  → T044 ‖ T045, then T046-T047 (US4)
+  → T044 ‖ T045, then T047 (US4; T046 descoped)
   → T048-T053 (polish)
   → T054 ‖ T055 ‖ T056 ‖ T064 (tests + CI deploy pipeline)
   → T057-T063 (contract/integration/e2e tests + verification)

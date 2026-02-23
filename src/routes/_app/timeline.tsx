@@ -13,6 +13,7 @@ import { useTags } from "@/hooks/useTags";
 import { EntryList } from "@/components/timeline/EntryList";
 import { EmptyState } from "@/components/timeline/EmptyState";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { AppHeaderActions } from "@/components/layout/AppHeaderActions";
 
 export const Route = createFileRoute("/_app/timeline")({
   component: TimelinePage,
@@ -32,15 +33,18 @@ function TimelinePage() {
           <Title order={4} ff="monospace">
             Reflog
           </Title>
-          <Button
-            size="xs"
-            variant="light"
-            onClick={() => {
-              void navigate({ to: "/entry/new" });
-            }}
-          >
-            New Entry
-          </Button>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              onClick={() => {
+                void navigate({ to: "/entry/new" });
+              }}
+            >
+              New Entry
+            </Button>
+            <AppHeaderActions />
+          </Group>
         </Group>
       </AppShell.Header>
 

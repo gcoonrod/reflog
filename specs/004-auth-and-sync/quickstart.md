@@ -171,7 +171,7 @@ Phases are numbered to match [tasks.md](./tasks.md) for cross-reference.
 ### Phase 6: US4 — Abuse Protection / P3 (tasks.md T044–T047)
 1. Rate limiting middleware — built-in binding (T044).
 2. Request validation middleware (T045).
-3. **MANUAL**: Auth0 bot detection (T046).
+3. ~~Auth0 bot detection (T046)~~ — **DESCOPED** (requires Enterprise subscription).
 4. Tombstone GC cron (T047).
 
 ### Phase 7: Migration & Polish (tasks.md T048–T053b)

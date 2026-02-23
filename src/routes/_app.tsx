@@ -1,13 +1,9 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
 import { notifications } from "@mantine/notifications";
-import { Group } from "@mantine/core";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { SyncErrorBoundary } from "@/components/sync/SyncErrorBoundary";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { AccountMenu } from "@/components/auth/AccountMenu";
-import { LockButton } from "@/components/auth/LockButton";
-import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { VaultProvider, useVault } from "@/hooks/useVault";
 import { useAuth } from "@/hooks/useAuth";
 import { useAutoLock } from "@/hooks/useAutoLock";
@@ -138,25 +134,6 @@ function SyncLifecycle() {
   return null;
 }
 
-function AppHeaderActions() {
-  const { status } = useVault();
-
-  if (status !== "unlocked") {
-    return null;
-  }
-
-  return (
-    <Group
-      gap="xs"
-      style={{ position: "fixed", top: 12, right: 16, zIndex: 1000 }}
-    >
-      <SyncIndicator />
-      <LockButton />
-      <AccountMenu />
-    </Group>
-  );
-}
-
 function AppLayout() {
   return (
     <AuthGuard>
@@ -167,7 +144,6 @@ function AppLayout() {
           <SyncConflictNotifier />
           <SyncLifecycle />
         </SyncErrorBoundary>
-        <AppHeaderActions />
         <ErrorBoundary fallback={null}>
           <SearchPalette />
         </ErrorBoundary>
