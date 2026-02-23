@@ -145,7 +145,7 @@ function ViewEntryPage() {
                 </Group>
               </Group>
 
-              {entry.tags.length > 0 && (
+              {Array.isArray(entry.tags) && entry.tags.length > 0 && (
                 <Group gap={4}>
                   {entry.tags.map((tag) => (
                     <Badge key={tag} size="sm" variant="light">

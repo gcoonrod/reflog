@@ -47,9 +47,10 @@ export async function list(options?: {
   // AND filter: entry must have ALL selected tags
   if (options?.tags && options.tags.length > 0) {
     const requiredTags = options.tags;
-    results = results.filter((entry) =>
-      requiredTags.every((tag) => entry.tags.includes(tag)),
-    );
+    results = results.filter((entry) => {
+      const tags = Array.isArray(entry.tags) ? entry.tags : [];
+      return requiredTags.every((tag) => tags.includes(tag));
+    });
   }
 
   if (options?.offset) {

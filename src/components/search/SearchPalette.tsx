@@ -23,7 +23,7 @@ export function SearchPalette() {
       </Text>
     ),
     rightSection:
-      result.tags.length > 0 ? (
+      Array.isArray(result.tags) && result.tags.length > 0 ? (
         <Group gap={4}>
           {result.tags.slice(0, 3).map((tag) => (
             <Badge key={tag} size="xs" variant="light">
