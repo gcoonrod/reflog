@@ -32,6 +32,8 @@ describe("DB encryption middleware", () => {
       status: "published",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      syncVersion: 0,
+      deletedAt: null,
     };
 
     await db.entries.add(entry);
@@ -54,6 +56,8 @@ describe("DB encryption middleware", () => {
       status: "published",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      syncVersion: 0,
+      deletedAt: null,
     };
 
     await db.entries.add(entry);
@@ -121,6 +125,8 @@ describe("DB encryption middleware", () => {
         status: "published",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        syncVersion: 0,
+        deletedAt: null,
       }),
     ).rejects.toThrow("Vault is locked");
   });
@@ -134,6 +140,8 @@ describe("DB encryption middleware", () => {
       status: "draft",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      syncVersion: 0,
+      deletedAt: null,
     });
 
     const result = await db.entries.get("e4");
@@ -151,6 +159,8 @@ describe("DB encryption middleware", () => {
       status: "published",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      syncVersion: 0,
+      deletedAt: null,
     });
 
     const result = await db.entries.get("e5");
@@ -170,6 +180,8 @@ describe("DB encryption middleware", () => {
         status: "published" as const,
         createdAt: now,
         updatedAt: now,
+        syncVersion: 0,
+        deletedAt: null,
       },
       {
         id: "q2",
@@ -179,6 +191,8 @@ describe("DB encryption middleware", () => {
         status: "published" as const,
         createdAt: now,
         updatedAt: now,
+        syncVersion: 0,
+        deletedAt: null,
       },
     ]);
 

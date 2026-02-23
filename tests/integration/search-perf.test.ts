@@ -15,6 +15,8 @@ function generateEntries(count: number): Entry[] {
       status: "published",
       createdAt: new Date(Date.now() - i * 3600000).toISOString(),
       updatedAt: new Date(Date.now() - i * 3600000).toISOString(),
+      syncVersion: 0,
+      deletedAt: null,
     });
   }
 
@@ -66,6 +68,8 @@ describe("search performance", () => {
       status: "published",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      syncVersion: 0,
+      deletedAt: null,
     };
 
     const start = performance.now();

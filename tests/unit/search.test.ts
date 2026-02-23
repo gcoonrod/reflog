@@ -10,6 +10,8 @@ function makeEntry(overrides: Partial<Entry> & { id: string }): Entry {
     status: "published",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    syncVersion: 0,
+    deletedAt: null,
     ...overrides,
   };
 }

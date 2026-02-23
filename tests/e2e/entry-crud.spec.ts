@@ -1,9 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
-async function setupAndUnlock(page: import("@playwright/test").Page) {
+async function setupAndUnlock(page: Page) {
   await page.goto("/setup");
-  await page.getByLabel("Passphrase", { exact: true }).fill("test-passphrase-123");
-  await page.getByLabel("Confirm Passphrase").fill("test-passphrase-123");
+  await page.getByLabel("Passphrase", { exact: true }).click();
+  await page.keyboard.type("test-passphrase-123");
+  await page.getByLabel("Confirm Passphrase").click();
+  await page.keyboard.type("test-passphrase-123");
   await page.getByRole("button", { name: /create vault/i }).click();
   await expect(page).toHaveURL(/timeline/);
 }

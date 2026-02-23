@@ -12,6 +12,13 @@ const ENCRYPTED_TABLES: Record<string, string[]> = {
 /** Shared mutable reference to the current CryptoKey. */
 let activeKey: CryptoKey | null = null;
 
+/** Bypass flag for schema upgrades — upgrade mutations skip encryption. */
+let _isUpgrading = false;
+
+export function setUpgrading(value: boolean): void {
+  _isUpgrading = value;
+}
+
 export function setEncryptionKey(key: CryptoKey | null): void {
   activeKey = key;
 }
@@ -72,6 +79,12 @@ function createEncryptedTable(
     ...downlevelTable,
 
     mutate(req) {
+      // During schema upgrades, bypass encryption entirely — upgrade
+      // mutations only touch non-encrypted fields (syncVersion, deletedAt)
+      // while encrypted fields pass through as raw {ciphertext, iv} objects.
+      if (_isUpgrading) {
+        return downlevelTable.mutate(req);
+      }
       if (!activeKey) {
         return Dexie.Promise.reject(
           new Error("Vault is locked — cannot write encrypted data"),

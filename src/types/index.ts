@@ -1,3 +1,17 @@
+// Sync Types (re-export from sync.ts)
+export type {
+  SyncRecord,
+  PushRequest,
+  PushResponse,
+  PullResponse,
+  DeviceRegistration,
+  Device,
+  AccountUsage,
+  ExportResponse,
+  QuotaExceededError,
+  SyncStatus,
+} from "./sync";
+
 // Entity Types
 
 export interface Entry {
@@ -8,6 +22,8 @@ export interface Entry {
   status: "draft" | "published";
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
+  syncVersion: number;
+  deletedAt: string | null;
 }
 
 export interface VaultMeta {

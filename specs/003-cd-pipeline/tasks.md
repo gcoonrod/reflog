@@ -5,7 +5,9 @@
 
 **Tests**: Not requested. This feature is CI/CD infrastructure with no automated tests — verification is via manual test deployment in Phase 5.
 
-**Organization**: Tasks are grouped by user story. US3 (Changelog-Driven Release Notes) has no unique implementation tasks — it is fully delivered by the combination of T001 (CHANGELOG.md creation) and T003 (changelog guard in cd.yml). This is noted explicitly in Phase 3.
+**Organization**: Tasks are grouped by user story. US3 (Changelog-Driven Release Notes) has no unique implementation tasks — it is fully delivered by the combination of T001 (CHANGELOG.md creation) and the changelog guard step in the deploy job (T003). This is noted explicitly in Phase 3.
+
+**Final Architecture Note**: The original plan used a separate `cd.yml` with a `workflow_run` trigger chained to CI. During implementation, `workflow_run`'s `branches` filter proved unreliable — PR CI completions on develop triggered spurious CD runs despite the `branches: [main]` filter. The deploy job was moved into `ci.yml` as a conditional job (`if: github.ref == 'refs/heads/main'`) in v0.3.1, eliminating this class of bugs entirely. Task descriptions below reflect the original plan; see plan.md for the final architecture.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -17,19 +19,19 @@
 
 ## Phase 1: Setup
 
-**Purpose**: Create the CHANGELOG.md file that the CD workflow's changelog guard will validate against.
+**Purpose**: Create the CHANGELOG.md file that the deploy job's changelog guard will validate against.
 
-- [x] T001 Create `CHANGELOG.md` in the repository root with backfilled entries for v0.1.0 and v0.2.0. Copy the exact content from [plan.md § CHANGELOG Format](./plan.md#changelog-format). The version header format `## [x.y.z]` is the contract between this file and the CD workflow's changelog guard ([research.md R3](./research.md#r3-changelog-validation-in-github-actions)).
+- [x] T001 Create `CHANGELOG.md` in the repository root with backfilled entries for v0.1.0 and v0.2.0. Copy the exact content from [plan.md § CHANGELOG Format](./plan.md#changelog-format). The version header format `## [x.y.z]` is the contract between this file and the deploy job's changelog guard ([research.md R3](./research.md#r3-changelog-validation-in-github-actions)).
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Modify the CI workflow so `workflow_run` can chain the CD workflow after CI completes on `main`.
+**Purpose**: Modify the CI workflow to run on pushes to `main` so the deploy job can execute after CI jobs pass.
 
-**CRITICAL**: The CD workflow (Phase 3) will not function without this change. The `workflow_run` trigger requires CI to run on `push: branches: [main]`.
+**CRITICAL**: The deploy job will not run without this change. It requires CI to trigger on `push: branches: [main]`.
 
-- [x] T002 Update `.github/workflows/ci.yml`: (1) add `push: branches: [main]` to the `on:` trigger block, and (2) change the concurrency group from `ci-${{ github.event.pull_request.number }}` to `ci-${{ github.ref }}` so push events get a valid group key. Apply the exact diff from [plan.md § CI Workflow Changes](./plan.md#ci-workflow-changes). See [research.md R4](./research.md#r4-ci-check-verification-in-cd-workflows) for why the push trigger is needed.
+- [x] T002 Update `.github/workflows/ci.yml`: (1) add `push: branches: [main]` and `workflow_dispatch` to the `on:` trigger block, (2) change the concurrency group from `ci-${{ github.event.pull_request.number }}` to `ci-${{ github.ref }}` so push events get a valid group key, and (3) change `cancel-in-progress` to `${{ github.event_name == 'pull_request' }}` so stale PR runs are cancelled but in-flight main pushes (which include the deploy job) are never cancelled. See [research.md R4](./research.md#r4-ci-check-verification-in-cd-workflows) for why the push trigger is needed.
 
 **Checkpoint**: T001 and T002 are parallelizable (different files, no dependency). Both must complete before Phase 3.
 
@@ -37,17 +39,17 @@
 
 ## Phase 3: US1 + US3 — Automated Production Deployment with Changelog Enforcement (P1, P3) :dart: MVP
 
-**Goal**: Create the CD workflow that automatically builds and deploys to Cloudflare Pages on push to `main`, gated by version check, changelog check, and CI success. This phase also delivers US3 (changelog enforcement) via the changelog guard step embedded in the workflow.
+**Goal**: Add a deploy job to `ci.yml` that automatically builds and deploys to Cloudflare Pages on push to `main`, gated by version check, changelog check, and CI success. This phase also delivers US3 (changelog enforcement) via the changelog guard step embedded in the deploy job.
 
-**Independent Test**: Merge a release branch to `main` with a bumped version and CHANGELOG.md entry. Verify the CD workflow triggers, passes all guards, deploys, and creates a git tag. Then push without a version bump and verify deployment is skipped gracefully.
+**Independent Test**: Merge a release branch to `main` with a bumped version and CHANGELOG.md entry. Verify the deploy job triggers after CI passes, passes all guards, deploys, and creates a git tag. Then push without a version bump and verify deployment is skipped gracefully.
 
 **US3 Coverage**: US3 (Changelog-Driven Release Notes) requires two things: (1) a CHANGELOG.md file exists (delivered by T001), and (2) the CD pipeline enforces that every deployed version has a corresponding entry (delivered by the changelog guard step in T003). No additional tasks are needed for US3.
 
 ### Implementation
 
-- [x] T003 [US1] Create `.github/workflows/cd.yml` using the complete workflow YAML from [plan.md § Complete cd.yml](./plan.md#complete-cdyml). The workflow includes: `workflow_run` trigger chained to CI ([R4](./research.md#r4-ci-check-verification-in-cd-workflows)), `concurrency` with `cancel-in-progress: false` ([R6](./research.md#r6-concurrency-controls-for-cd-workflows)), version guard comparing `package.json` against git tags ([R2](./research.md#r2-version-comparison-in-cd-workflows)), changelog guard via grep ([R3](./research.md#r3-changelog-validation-in-github-actions)), `yarn build` step, Cloudflare Pages deployment via `cloudflare/wrangler-action@v3` ([R1](./research.md#r1-cloudflare-pages-deployment-from-github-actions)), git tag creation, and `$GITHUB_STEP_SUMMARY` output for all three paths (success, skipped, failed). Verify the file matches the [Spec Requirements Mapping](./plan.md#spec-requirements-mapping) table after creation.
+- [x] T003 [US1] Add a `deploy` job to `.github/workflows/ci.yml` gated by `if: github.ref == 'refs/heads/main'` with `needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit]`. The deploy job includes: job-level `concurrency` with `cancel-in-progress: false` ([R6](./research.md#r6-concurrency-controls-for-cd-workflows)), job-level `permissions` (`contents: write`, `deployments: write`), version guard comparing `package.json` against git tags ([R2](./research.md#r2-version-comparison-in-cd-workflows)), changelog guard via grep ([R3](./research.md#r3-changelog-validation-in-github-actions)), `yarn build` step, SPA shell copy (`cp dist/client/_shell.html dist/client/index.html`), Cloudflare Pages deployment via `cloudflare/wrangler-action@v3` ([R1](./research.md#r1-cloudflare-pages-deployment-from-github-actions)), git tag creation, and `$GITHUB_STEP_SUMMARY` output for all three paths (success, skipped, failed). Also add `public/_redirects` with `/* /index.html 200` for SPA routing on Cloudflare Pages. Verify the deploy job matches the [Spec Requirements Mapping](./plan.md#spec-requirements-mapping) table.
 
-**Checkpoint**: All code changes are complete (T001–T003). The CD workflow exists but cannot deploy until Cloudflare Pages is configured (Phase 4).
+**Checkpoint**: All code changes are complete (T001–T003). The deploy job exists but cannot deploy until Cloudflare Pages is configured (Phase 4).
 
 ---
 
@@ -67,7 +69,7 @@
 
 - [x] T006 [US2] Verify Cloudflare and DNS setup by running the verification commands from [plan.md § One-Time Setup](./plan.md#one-time-setup-pre-implementation): `gh secret list | grep CLOUDFLARE` to confirm secrets exist, and `dig CNAME reflog.microcode.io +short` to confirm DNS resolves to `reflog.pages.dev`.
 
-**Checkpoint**: Hosting infrastructure is ready. The CD workflow can now deploy. Proceed to Phase 5 for end-to-end verification.
+**Checkpoint**: Hosting infrastructure is ready. The deploy job can now deploy. Proceed to Phase 5 for end-to-end verification.
 
 ---
 
@@ -77,11 +79,11 @@
 
 - [x] T007 Run the quality gate locally: `yarn typecheck && yarn lint && yarn test && yarn build && yarn test:e2e`. All must pass before committing.
 
-- [x] T008 Prepare and execute the test deployment: create `release/0.3.0` branch from `develop`, bump `package.json` version to `0.3.0`, add a `## [0.3.0]` entry to `CHANGELOG.md`, merge to `main`, and verify the full pipeline using the 10-step checklist in [quickstart.md § Verification Steps](./quickstart.md#verification-steps). Key checkpoints: CI runs on main, CD triggers after CI, version guard passes, changelog guard passes, Cloudflare deployment succeeds, git tag `v0.3.0` is created, and `https://reflog.microcode.io` loads with valid SSL.
+- [x] T008 Prepare and execute the test deployment: create a release branch from `develop`, bump `package.json` version, add a changelog entry, merge to `main`, and verify the full pipeline. Key checkpoints: CI runs on main, deploy job runs after all CI jobs pass, version guard passes, changelog guard passes, Cloudflare deployment succeeds, git tag is created, and `https://reflog.microcode.io` loads with valid SSL.
 
-- [x] T009 Verify skip behavior: push a non-version-bump commit to `main` (e.g., a docs change). Confirm the CD workflow runs but skips deployment with a step summary message indicating the version is already deployed. This validates FR-006 and SC-007.
+- [x] T009 Verify skip behavior: push a non-version-bump commit to `main` (e.g., a docs change). Confirm the deploy job runs but skips deployment with a step summary message indicating the version is already deployed. This validates FR-006 and SC-007.
 
-- [x] T010 Run Lighthouse against `https://reflog.microcode.io` and verify: (1) performance score ≥ 90 (SC-002), (2) PWA installability check passes — manifest returns 200, service worker is registered, and the app is flagged as installable (FR-012). Run via: `npx lighthouse https://reflog.microcode.io --output=json --chrome-flags="--headless=new" | node -e "const r=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const p=r.categories.performance.score*100; const pwa=r.categories['best-practices'].score*100; console.log('Performance:',p,'PWA:',pwa); if(p<90) process.exit(1);"` or equivalent manual check via Chrome DevTools Lighthouse panel.
+- [x] T010 Run Lighthouse against `https://reflog.microcode.io` and verify: (1) performance score ≥ 90 (SC-002), (2) PWA installability check passes — manifest returns 200, service worker is registered, and the app is flagged as installable (FR-012).
 
 ---
 
@@ -91,14 +93,14 @@
 
 ```text
 Phase 1 (Setup)          ─┐
-                           ├─→ Phase 3 (US1+US3: cd.yml) ─→ Phase 5 (Verify)
-Phase 2 (Foundational)   ─┘                                       ↑
-                                                                   │
-Phase 4 (US2: Manual)    ─────────────────────────────────────────┘
+                           ├─→ Phase 3 (US1+US3: deploy job) ─→ Phase 5 (Verify)
+Phase 2 (Foundational)   ─┘                                          ↑
+                                                                      │
+Phase 4 (US2: Manual)    ────────────────────────────────────────────┘
 ```
 
 - **Phase 1 + Phase 2**: No dependency between them — can run in parallel (T001 ‖ T002)
-- **Phase 3**: Depends on Phase 1 (CHANGELOG.md must exist for guard) and Phase 2 (CI push trigger must exist for `workflow_run`)
+- **Phase 3**: Depends on Phase 1 (CHANGELOG.md must exist for guard) and Phase 2 (CI push trigger must exist for deploy job)
 - **Phase 4**: No dependency on Phases 1–3. Can be done at any time, even before code work. However, it must be complete before Phase 5 verification.
 - **Phase 5**: Depends on Phases 3 and 4 both being complete (code deployed to configured hosting)
 
@@ -114,7 +116,7 @@ Phase 4 (US2: Manual)    ──────────────────�
 |------|-----------|--------|
 | T001 | — | No dependencies |
 | T002 | — | No dependencies |
-| T003 | T001, T002 | cd.yml references CHANGELOG.md (guard) and requires CI push trigger (workflow_run) |
+| T003 | T001, T002 | Deploy job references CHANGELOG.md (guard) and requires CI push trigger |
 | T004 | — | Manual, can start anytime |
 | T005 | T004 | Pages project must exist before adding custom domain |
 | T006 | T005 | DNS must be configured before verification |
@@ -142,8 +144,8 @@ T009 (skip behavior) ‖ T010 (Lighthouse + PWA)
 
 ### MVP First (US1 + US3)
 
-1. Complete T001 + T002 in parallel (CHANGELOG.md + ci.yml fix)
-2. Complete T003 (cd.yml creation)
+1. Complete T001 + T002 in parallel (CHANGELOG.md + ci.yml updates)
+2. Complete T003 (deploy job + SPA routing)
 3. **PAUSE**: Developer completes manual setup (T004–T006)
 4. Complete T007 (quality gate)
 5. Complete T008 (test deployment) — validates US1, US2, and US3 together
@@ -165,8 +167,8 @@ Agent (code):        T001 ‖ T002 ──→ T003 ──→ T007
 ## Notes
 
 - T001 and T002 are the only parallelizable code tasks ([P] eligible) — they modify different files with no dependency.
-- T003 is a single-file task (cd.yml) with the complete content provided in plan.md. Do not split it into substeps.
+- T003 adds the deploy job to ci.yml and the `public/_redirects` SPA routing file.
 - T004 and T005 are manual — the agent must pause and prompt the developer to complete them.
 - T008 is the primary acceptance test for all three user stories.
 - T009 and T010 are parallel post-deployment verification tasks. T009 validates skip behavior (FR-006, SC-007). T010 validates performance and PWA installability (SC-002, FR-012).
-- The total code delta for this feature is 3 files: 1 new (cd.yml), 1 new (CHANGELOG.md), 1 modified (ci.yml).
+- The total code delta for this feature is 3 files: 1 new (`CHANGELOG.md`), 1 new (`public/_redirects`), 1 modified (`ci.yml` — added push trigger, workflow_dispatch, conditional cancel-in-progress, and deploy job).

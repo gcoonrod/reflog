@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { UnlockScreen } from "@/components/vault/UnlockScreen";
 import { useVault } from "@/hooks/useVault";
 
-export const Route = createFileRoute("/unlock")({
+export const Route = createFileRoute("/_app/unlock")({
   component: UnlockPage,
 });
 

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { SetupWizard } from "@/components/vault/SetupWizard";
 import { useVault } from "@/hooks/useVault";
 
-export const Route = createFileRoute("/setup")({
+export const Route = createFileRoute("/_app/setup")({
   component: SetupPage,
 });
 

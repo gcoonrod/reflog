@@ -8,9 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import * as vault from "@/services/vault";
+import { useAuth } from "@/hooks/useAuth";
 
 interface VaultState {
   status: "loading" | "no-vault" | "locked" | "unlocked";
+  isAuthenticated: boolean;
   setup: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<void>;
   lock: () => void;
@@ -19,6 +21,7 @@ interface VaultState {
 const VaultContext = createContext<VaultState | null>(null);
 
 export function VaultProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [status, setStatus] = useState<VaultState["status"]>("loading");
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   return createElement(
     VaultContext.Provider,
-    { value: { status, setup, unlock, lock } },
+    { value: { status, isAuthenticated, setup, unlock, lock } },
     children,
   );
 }
