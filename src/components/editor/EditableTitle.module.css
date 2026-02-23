@@ -1,0 +1,14 @@
+.input {
+  font-weight: 600;
+  border-bottom: 1px dashed var(--mantine-color-dimmed);
+  border-radius: 0;
+  transition: border-color 150ms ease;
+}
+
+.input:hover {
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.input:focus {
+  border-bottom: 2px solid var(--mantine-color-primary-filled);
+}

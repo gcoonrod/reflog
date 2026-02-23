@@ -22,6 +22,7 @@ import { useVault } from "@/hooks/useVault";
 import { performLogout } from "@/services/auth";
 import * as syncApi from "@/services/syncApi";
 import { decryptFromSync } from "@/services/syncCrypto";
+import { unwrapLegacyEncryptedFields } from "@/services/sync";
 import { getEncryptionKey } from "@/db";
 
 export function AccountMenu() {
@@ -86,8 +87,12 @@ export function AccountMenu() {
       for (const record of exportData.records) {
         if (record.isTombstone || !record.encryptedPayload) continue;
         try {
-          const decrypted = await decryptFromSync(
+          const rawDecrypted = await decryptFromSync(
             record.encryptedPayload,
+            cryptoKey,
+          );
+          const decrypted = await unwrapLegacyEncryptedFields(
+            rawDecrypted as Record<string, unknown>,
             cryptoKey,
           );
           decryptedRecords.push(decrypted);
