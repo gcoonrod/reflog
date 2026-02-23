@@ -18,6 +18,27 @@ const RECORD_TYPE_TO_TABLE: Record<SyncRecord["recordType"], string> = {
 };
 
 /**
+ * Reconstruct a Uint8Array from a JSON-round-tripped plain object
+ * whose keys are stringified numeric indices (e.g. {"0":65,"1":66}).
+ * Derives length from the highest numeric key + 1 so sparse or
+ * non-contiguous indices don't silently truncate the buffer.
+ */
+function toUint8Array(obj: Record<string, number>): Uint8Array {
+  const numericKeys = Object.keys(obj)
+    .map(Number)
+    .filter((k) => Number.isInteger(k) && k >= 0);
+  if (numericKeys.length === 0) {
+    throw new Error("Legacy encrypted field has no valid byte indices");
+  }
+  const length = Math.max(...numericKeys) + 1;
+  const arr = new Uint8Array(length);
+  for (const k of numericKeys) {
+    arr[k] = obj[String(k)] ?? 0;
+  }
+  return arr;
+}
+
+/**
  * Records pushed before the middleware-order fix have locally-encrypted
  * fields ({ciphertext, iv} as plain objects from JSON round-trip).
  * Detect and decrypt them so applyChange receives plaintext.
@@ -39,10 +60,8 @@ async function unwrapLegacyEncryptedFields(
       const ctObj = encObj.ciphertext;
       const ivObj = encObj.iv;
       if (!ctObj || !ivObj) continue;
-      const ct = new Uint8Array(Object.keys(ctObj).length);
-      for (let i = 0; i < ct.length; i++) ct[i] = ctObj[String(i)] ?? 0;
-      const iv = new Uint8Array(Object.keys(ivObj).length);
-      for (let i = 0; i < iv.length; i++) iv[i] = ivObj[String(i)] ?? 0;
+      const ct = toUint8Array(ctObj);
+      const iv = toUint8Array(ivObj);
       const plaintext = await decrypt(ct, iv, key);
       clone[field] = JSON.parse(plaintext) as unknown;
     }
