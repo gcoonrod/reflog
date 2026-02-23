@@ -74,7 +74,8 @@ function SyncConflictNotifier() {
   useEffect(() => {
     return onSyncEvent((event) => {
       if (event.type === "conflict-resolved" && event.detail) {
-        const title = event.detail.conflictTitle ?? "Unknown entry";
+        const rawTitle = event.detail.conflictTitle;
+        const title = typeof rawTitle === "string" ? rawTitle : "Unknown entry";
         if (event.detail.conflictType === "deleted") {
           notifications.show({
             title: "Sync conflict resolved",
@@ -147,7 +148,7 @@ function AppHeaderActions() {
   return (
     <Group
       gap="xs"
-      style={{ position: "fixed", top: 12, right: 16, zIndex: 100 }}
+      style={{ position: "fixed", top: 12, right: 16, zIndex: 1000 }}
     >
       <SyncIndicator />
       <LockButton />
