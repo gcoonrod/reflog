@@ -4,6 +4,8 @@ import { Center, Loader } from "@mantine/core";
 import { useVault } from "@/hooks/useVault";
 import db from "@/db";
 
+const AUTH_DISABLED = import.meta.env.VITE_AUTH_DISABLED === "true";
+
 export const Route = createFileRoute("/_app/")({
   component: IndexPage,
 });
@@ -13,9 +15,15 @@ function IndexPage() {
   const navigate = useNavigate();
   const [needsMigration, setNeedsMigration] = useState<boolean | null>(null);
 
-  // T049: Check if migration is needed (existing vault but no deviceId)
+  // T049: Check if migration is needed (existing vault but no deviceId).
+  // Skip when auth is disabled — no sync infrastructure in E2E mode.
   useEffect(() => {
     if (status !== "unlocked") return;
+
+    if (AUTH_DISABLED) {
+      setNeedsMigration(false);
+      return;
+    }
 
     void db.sync_meta.get("deviceId").then((meta) => {
       setNeedsMigration(!meta);
