@@ -9,82 +9,108 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnlockRouteImport } from './routes/unlock'
-import { Route as TimelineRouteImport } from './routes/timeline'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as EntryNewRouteImport } from './routes/entry/new'
-import { Route as EntryIdIndexRouteImport } from './routes/entry/$id/index'
-import { Route as EntryIdEditRouteImport } from './routes/entry/$id/edit'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppUnlockRouteImport } from './routes/_app/unlock'
+import { Route as AppTimelineRouteImport } from './routes/_app/timeline'
+import { Route as AppSetupRouteImport } from './routes/_app/setup'
+import { Route as AppMigrateRouteImport } from './routes/_app/migrate'
+import { Route as AppEntryNewRouteImport } from './routes/_app/entry/new'
+import { Route as AppEntryIdIndexRouteImport } from './routes/_app/entry/$id/index'
+import { Route as AppEntryIdEditRouteImport } from './routes/_app/entry/$id/edit'
 
-const UnlockRoute = UnlockRouteImport.update({
-  id: '/unlock',
-  path: '/unlock',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TimelineRoute = TimelineRouteImport.update({
-  id: '/timeline',
-  path: '/timeline',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const EntryNewRoute = EntryNewRouteImport.update({
+const AppUnlockRoute = AppUnlockRouteImport.update({
+  id: '/unlock',
+  path: '/unlock',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTimelineRoute = AppTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSetupRoute = AppSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMigrateRoute = AppMigrateRouteImport.update({
+  id: '/migrate',
+  path: '/migrate',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEntryNewRoute = AppEntryNewRouteImport.update({
   id: '/entry/new',
   path: '/entry/new',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const EntryIdIndexRoute = EntryIdIndexRouteImport.update({
+const AppEntryIdIndexRoute = AppEntryIdIndexRouteImport.update({
   id: '/entry/$id/',
   path: '/entry/$id/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const EntryIdEditRoute = EntryIdEditRouteImport.update({
+const AppEntryIdEditRoute = AppEntryIdEditRouteImport.update({
   id: '/entry/$id/edit',
   path: '/entry/$id/edit',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/setup': typeof SetupRoute
-  '/timeline': typeof TimelineRoute
-  '/unlock': typeof UnlockRoute
-  '/entry/new': typeof EntryNewRoute
-  '/entry/$id/edit': typeof EntryIdEditRoute
-  '/entry/$id/': typeof EntryIdIndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/migrate': typeof AppMigrateRoute
+  '/setup': typeof AppSetupRoute
+  '/timeline': typeof AppTimelineRoute
+  '/unlock': typeof AppUnlockRoute
+  '/entry/new': typeof AppEntryNewRoute
+  '/entry/$id/edit': typeof AppEntryIdEditRoute
+  '/entry/$id/': typeof AppEntryIdIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/setup': typeof SetupRoute
-  '/timeline': typeof TimelineRoute
-  '/unlock': typeof UnlockRoute
-  '/entry/new': typeof EntryNewRoute
-  '/entry/$id/edit': typeof EntryIdEditRoute
-  '/entry/$id': typeof EntryIdIndexRoute
+  '/login': typeof LoginRoute
+  '/migrate': typeof AppMigrateRoute
+  '/setup': typeof AppSetupRoute
+  '/timeline': typeof AppTimelineRoute
+  '/unlock': typeof AppUnlockRoute
+  '/': typeof AppIndexRoute
+  '/entry/new': typeof AppEntryNewRoute
+  '/entry/$id/edit': typeof AppEntryIdEditRoute
+  '/entry/$id': typeof AppEntryIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/setup': typeof SetupRoute
-  '/timeline': typeof TimelineRoute
-  '/unlock': typeof UnlockRoute
-  '/entry/new': typeof EntryNewRoute
-  '/entry/$id/edit': typeof EntryIdEditRoute
-  '/entry/$id/': typeof EntryIdIndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/migrate': typeof AppMigrateRoute
+  '/_app/setup': typeof AppSetupRoute
+  '/_app/timeline': typeof AppTimelineRoute
+  '/_app/unlock': typeof AppUnlockRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/entry/new': typeof AppEntryNewRoute
+  '/_app/entry/$id/edit': typeof AppEntryIdEditRoute
+  '/_app/entry/$id/': typeof AppEntryIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
+    | '/migrate'
     | '/setup'
     | '/timeline'
     | '/unlock'
@@ -93,96 +119,136 @@ export interface FileRouteTypes {
     | '/entry/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/login'
+    | '/migrate'
     | '/setup'
     | '/timeline'
     | '/unlock'
+    | '/'
     | '/entry/new'
     | '/entry/$id/edit'
     | '/entry/$id'
   id:
     | '__root__'
-    | '/'
-    | '/setup'
-    | '/timeline'
-    | '/unlock'
-    | '/entry/new'
-    | '/entry/$id/edit'
-    | '/entry/$id/'
+    | '/_app'
+    | '/login'
+    | '/_app/migrate'
+    | '/_app/setup'
+    | '/_app/timeline'
+    | '/_app/unlock'
+    | '/_app/'
+    | '/_app/entry/new'
+    | '/_app/entry/$id/edit'
+    | '/_app/entry/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  SetupRoute: typeof SetupRoute
-  TimelineRoute: typeof TimelineRoute
-  UnlockRoute: typeof UnlockRoute
-  EntryNewRoute: typeof EntryNewRoute
-  EntryIdEditRoute: typeof EntryIdEditRoute
-  EntryIdIndexRoute: typeof EntryIdIndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unlock': {
-      id: '/unlock'
-      path: '/unlock'
-      fullPath: '/unlock'
-      preLoaderRoute: typeof UnlockRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/timeline': {
-      id: '/timeline'
-      path: '/timeline'
-      fullPath: '/timeline'
-      preLoaderRoute: typeof TimelineRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/entry/new': {
-      id: '/entry/new'
+    '/_app/unlock': {
+      id: '/_app/unlock'
+      path: '/unlock'
+      fullPath: '/unlock'
+      preLoaderRoute: typeof AppUnlockRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/timeline': {
+      id: '/_app/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof AppTimelineRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/setup': {
+      id: '/_app/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof AppSetupRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/migrate': {
+      id: '/_app/migrate'
+      path: '/migrate'
+      fullPath: '/migrate'
+      preLoaderRoute: typeof AppMigrateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/entry/new': {
+      id: '/_app/entry/new'
       path: '/entry/new'
       fullPath: '/entry/new'
-      preLoaderRoute: typeof EntryNewRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppEntryNewRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/entry/$id/': {
-      id: '/entry/$id/'
+    '/_app/entry/$id/': {
+      id: '/_app/entry/$id/'
       path: '/entry/$id'
       fullPath: '/entry/$id/'
-      preLoaderRoute: typeof EntryIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppEntryIdIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/entry/$id/edit': {
-      id: '/entry/$id/edit'
+    '/_app/entry/$id/edit': {
+      id: '/_app/entry/$id/edit'
       path: '/entry/$id/edit'
       fullPath: '/entry/$id/edit'
-      preLoaderRoute: typeof EntryIdEditRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppEntryIdEditRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppMigrateRoute: typeof AppMigrateRoute
+  AppSetupRoute: typeof AppSetupRoute
+  AppTimelineRoute: typeof AppTimelineRoute
+  AppUnlockRoute: typeof AppUnlockRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppEntryNewRoute: typeof AppEntryNewRoute
+  AppEntryIdEditRoute: typeof AppEntryIdEditRoute
+  AppEntryIdIndexRoute: typeof AppEntryIdIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppMigrateRoute: AppMigrateRoute,
+  AppSetupRoute: AppSetupRoute,
+  AppTimelineRoute: AppTimelineRoute,
+  AppUnlockRoute: AppUnlockRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppEntryNewRoute: AppEntryNewRoute,
+  AppEntryIdEditRoute: AppEntryIdEditRoute,
+  AppEntryIdIndexRoute: AppEntryIdIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  SetupRoute: SetupRoute,
-  TimelineRoute: TimelineRoute,
-  UnlockRoute: UnlockRoute,
-  EntryNewRoute: EntryNewRoute,
-  EntryIdEditRoute: EntryIdEditRoute,
-  EntryIdIndexRoute: EntryIdIndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -16,7 +16,7 @@ import { useEntry } from "@/hooks/useEntries";
 import * as entryService from "@/services/entries";
 import { formatRelativeDate } from "@/utils/date";
 
-export const Route = createFileRoute("/entry/$id/")({
+export const Route = createFileRoute("/_app/entry/$id/")({
   component: ViewEntryPage,
 });
 

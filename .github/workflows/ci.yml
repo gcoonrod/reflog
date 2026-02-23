@@ -105,7 +105,10 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - run: yarn build
+      - name: Build (auth disabled for E2E)
+        run: yarn build
+        env:
+          VITE_AUTH_DISABLED: "true"
       - run: yarn test:e2e
 
       - name: Upload Playwright report
@@ -121,6 +124,17 @@ jobs:
         with:
           name: e2e-traces
           path: test-results/
+
+  worker-typecheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - run: cd workers/sync-api && yarn install --frozen-lockfile
+      - run: cd workers/sync-api && yarn typecheck
 
   dependency-audit:
     runs-on: ubuntu-24.04
@@ -161,7 +175,7 @@ jobs:
   # workflow_run branch filtering.
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit]
+    needs: [lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit, worker-typecheck]
     runs-on: ubuntu-24.04
     # Queue deployments, never cancel in-progress. Separate from the CI
     # concurrency group so a new CI run can't cancel a running deploy.
@@ -244,10 +258,51 @@ jobs:
         if: steps.version.outputs.skip == 'false'
         run: cp dist/client/_shell.html dist/client/index.html
 
+      # --- Deploy Worker (backend before frontend) ---
+      - name: Install Worker dependencies
+        if: steps.version.outputs.skip == 'false'
+        run: cd workers/sync-api && yarn install --frozen-lockfile
+
+      - name: Run D1 migrations
+        if: steps.version.outputs.skip == 'false'
+        id: d1-migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/sync-api
+          command: d1 execute reflog-sync --remote --file=src/db/schema.sql
+
+      - name: Deploy Worker
+        if: steps.version.outputs.skip == 'false'
+        id: worker-deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/sync-api
+          command: deploy
+
+      - name: Worker health check
+        if: steps.version.outputs.skip == 'false'
+        id: health-check
+        run: |
+          for i in 1 2 3 4 5; do
+            response=$(curl -sf https://reflog-sync-api.greg-coonrod.workers.dev/api/v1/health) && break
+            echo "Health check attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          if [ -z "$response" ]; then
+            echo "Health check failed after 5 attempts"
+            exit 1
+          fi
+          echo "$response"
+          echo "$response" | jq -e '.status == "ok"'
+
       # --- Deploy to Cloudflare Pages ---
       - name: Deploy to Cloudflare Pages
         if: steps.version.outputs.skip == 'false'
-        id: deploy
+        id: pages-deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -267,11 +322,48 @@ jobs:
         if: steps.version.outputs.skip == 'false'
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          PAGES_URL: ${{ steps.pages-deploy.outputs.deployment-url }}
         run: |
+          WORKER_URL="https://reflog-sync-api.greg-coonrod.workers.dev"
           echo "## Deployment Successful" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Status | URL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|--------|-----|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Sync Worker | Deployed | $WORKER_URL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Pages (UI) | Deployed | $PAGES_URL |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Version**: $VERSION" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag**: \`v$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **URL**: $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Production**: https://reflog.microcode.io" >> "$GITHUB_STEP_SUMMARY"
+
+      # --- Rollback on Failure ---
+      - name: Rollback Worker
+        if: failure() && steps.worker-deploy.outcome == 'success'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: rollback --name=reflog-sync-api --yes --message="Auto-rollback from run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Write rollback summary
+        if: failure()
+        env:
+          D1_MIGRATIONS: ${{ steps.d1-migrations.outcome }}
+          WORKER_DEPLOY: ${{ steps.worker-deploy.outcome }}
+          HEALTH_CHECK: ${{ steps.health-check.outcome }}
+          PAGES_DEPLOY: ${{ steps.pages-deploy.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          echo "## Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Outcome |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|---------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| D1 Migrations | ${D1_MIGRATIONS:-skipped} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Sync Worker | ${WORKER_DEPLOY:-skipped} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Health Check | ${HEALTH_CHECK:-skipped} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Pages Deploy | ${PAGES_DEPLOY:-skipped} |" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$WORKER_DEPLOY" = "success" ]; then
+            echo "| Worker Rollback | Executed |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "See [workflow run]($RUN_URL) for details." >> "$GITHUB_STEP_SUMMARY"

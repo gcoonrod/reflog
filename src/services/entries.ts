@@ -17,6 +17,8 @@ export async function create(input: CreateEntryInput): Promise<Entry> {
     status: "published",
     createdAt: now,
     updatedAt: now,
+    syncVersion: 0,
+    deletedAt: null,
   };
 
   await db.entries.add(entry);
@@ -26,7 +28,8 @@ export async function create(input: CreateEntryInput): Promise<Entry> {
 
 export async function getById(id: string): Promise<Entry | null> {
   const entry = await db.entries.get(id);
-  return entry ?? null;
+  if (!entry || entry.deletedAt !== null) return null;
+  return entry;
 }
 
 export async function list(options?: {
@@ -34,7 +37,9 @@ export async function list(options?: {
   limit?: number;
   offset?: number;
 }): Promise<Entry[]> {
-  let results = await db.entries.where("status").equals("published").toArray();
+  let results = (
+    await db.entries.where("status").equals("published").toArray()
+  ).filter((entry) => entry.deletedAt === null);
 
   // Sort by createdAt descending (reverse chronological)
   results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -119,6 +124,8 @@ export async function saveDraft(
     status: "draft",
     createdAt: now,
     updatedAt: now,
+    syncVersion: 0,
+    deletedAt: null,
   };
 
   await db.entries.put(draft);

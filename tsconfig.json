@@ -17,8 +17,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite-plugin-pwa/react"]
+    "types": ["vite/client", "vite-plugin-pwa/react"]
   },
   "include": ["src/**/*", "tests/**/*", "vite.config.ts", "vitest.config.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "tests/e2e"]
 }

@@ -1,28 +1,39 @@
 <!--
 === Sync Impact Report ===
-Version change: 1.0.0 → 1.1.0
+Version change: 1.1.0 → 2.0.0 (MAJOR)
 Modified principles:
-  - None renamed or redefined
-Added sections:
-  - Principle VI: Git Flow & Commit Discipline (new core principle)
+  - I: "Privacy-First, Local-Only Data" → "Privacy-First, Device-Encrypted Data"
+    (Redefined: local-only storage constraint replaced with zero-knowledge
+    encryption boundary. Data may now traverse a server as ciphertext.)
+  - V: "Robust Error Boundaries" expanded to include authentication
+    failures and sync errors as critical subsystems.
+Added sections: None (same six principles)
 Removed sections: None
 Other changes:
-  - Governance > Compliance Review: Updated "Principles I-V" → "Principles I-VI"
+  - Architecture Boundaries: "No server-side components" ban removed.
+    Replaced with constrained server-side stack (Cloudflare Workers,
+    D1, Auth0) under zero-knowledge encryption rules.
+  - Architecture Boundaries: Reorganized into Client and Server
+    subsections with explicit permitted-use constraints.
+  - AI Agent Guidelines > Security Enforcement: Updated to reflect
+    zero-knowledge server constraint instead of blanket server ban.
 Templates requiring updates:
   - .specify/templates/plan-template.md — ✅ No updates needed
-    (Constitution Check section is dynamic; new principle will be
+    (Constitution Check section is dynamic; redefined principle will be
     evaluated at plan-generation time)
   - .specify/templates/spec-template.md — ✅ No updates needed
-    (Spec structure is feature-agnostic; branching/commit rules
-    apply during implementation, not specification)
+    (Spec structure is feature-agnostic; encryption constraints apply
+    during planning and implementation, not specification)
   - .specify/templates/tasks-template.md — ✅ No updates needed
-    (Line 249 already states "Commit after each task or logical group"
-    which is consistent with VI's "commit regularly" rule; the quality
-    gate constraint is enforced by the constitution, not the template)
+    (Task template is generic; zero-knowledge rules are enforced by
+    the constitution at implementation time, not by the template)
   - .specify/templates/checklist-template.md — ✅ No updates needed
   - .specify/templates/agent-file-template.md — ✅ No updates needed
   - .specify/templates/commands/*.md — ✅ No command files exist
-Follow-up TODOs: None
+Follow-up TODOs:
+  - ✅ RESOLVED (2026-02-21): plan.md Complexity Tracking section
+    rewritten to reflect design trade-offs rather than violations.
+    Constitution Check section shows PASS for all principles.
 ===========================
 -->
 
@@ -30,16 +41,39 @@ Follow-up TODOs: None
 
 ## Core Principles
 
-### I. Privacy-First, Local-Only Data
+### I. Privacy-First, Device-Encrypted Data
 
-All user data MUST be stored exclusively on the user's device. Client-side
-encryption via the Web Crypto API or `dexie-encrypted` is REQUIRED for all
-data at rest. No third-party analytics, remote tracking, telemetry, or
-external data routing is permitted under any circumstances.
+All user data MUST be encrypted and decrypted exclusively on the user's
+device. No unencrypted user content — including journal entries, titles,
+tags, and settings — may leave the device under any circumstances.
+Server-side components MUST operate as zero-knowledge services: they
+store and transmit only ciphertext and MUST NOT have access to
+encryption keys or plaintext data.
 
-**Rationale**: Reflog's core promise is "local commits" — a private journal
-that never phones home. Violating this principle fundamentally breaks the
-product's trust contract with its users.
+Unencrypted metadata transmitted to or stored on the server MUST be
+minimized to the operational minimum required for sync and
+authentication. The following categories define permitted metadata:
+
+- **Permitted** (operational necessity): record IDs, server-assigned
+  timestamps, record type labels, device identifiers, tombstone flags,
+  encrypted payload size (for quota enforcement).
+- **Prohibited**: any user-authored content (titles, bodies, tags,
+  setting values) in unencrypted form.
+- **Constrained**: any new metadata field added to server-side schemas
+  MUST be justified as operationally necessary, documented, and
+  reviewed for side-channel or metadata-analysis risk.
+
+Authentication credentials (managed by the identity provider) MUST be
+independent from vault encryption keys. Compromising the authentication
+layer MUST NOT expose encrypted data.
+
+**Rationale**: Reflog's core promise is a private journal. While data
+now traverses a server for cross-device sync, the server is a blind
+relay — it cannot read, analyze, or leak user content. The encryption
+boundary is the device, not the network. This preserves the original
+trust contract: the user's data is their own, readable only with their
+vault passphrase. Minimizing unencrypted metadata further reduces the
+attack surface for traffic analysis and side-channel inference.
 
 ### II. Offline-First PWA
 
@@ -49,9 +83,14 @@ caching strategies to guarantee offline-first capability. The app MUST be
 installable and deliver a seamless experience across both desktop and mobile
 environments.
 
+Sync is an enhancement, not a dependency. All CRUD operations on journal
+entries MUST work without connectivity. Changes made offline MUST queue
+locally and sync automatically when connectivity is restored.
+
 **Rationale**: A developer journal is useless if it requires connectivity.
 Offline-first ensures the app is available exactly when developers need it —
-on planes, in coffee shops, during outages.
+on planes, in coffee shops, during outages. Sync adds cross-device access
+but MUST NOT compromise local-first reliability.
 
 ### III. Developer-Centric Minimalism
 
@@ -63,35 +102,39 @@ or navigation chrome. Global keyboard shortcuts MUST be supported:
 - `Cmd/Ctrl + Enter` — Save entry
 - `Cmd/Ctrl + K` — Search
 - `Cmd/Ctrl + N` — New entry
+- `Shift + Meta + L` — Lock vault
 
 **Rationale**: The target audience lives in terminals and code editors. The
 UI language MUST feel native to that workflow, not like a generic notes app.
 
 ### IV. Strict TypeScript & Modular Architecture
 
-Strict TypeScript typing is REQUIRED across the entire codebase. The `any`
-type is prohibited. Clear interfaces MUST be defined for all journal entry
-objects, database schemas, and component props. React components MUST be
-modular and reusable, with state kept local to where it is consumed whenever
-possible. Code MUST be self-documenting — comments are reserved for
-explaining *why*, not *what*, with exceptions for cryptographic
-implementations and unusual architectural decisions.
+Strict TypeScript typing is REQUIRED across the entire codebase — both
+client and server. The `any` type is prohibited. Clear interfaces MUST be
+defined for all journal entry objects, database schemas, API contracts, and
+component props. React components MUST be modular and reusable, with state
+kept local to where it is consumed whenever possible. Code MUST be
+self-documenting — comments are reserved for explaining *why*, not *what*,
+with exceptions for cryptographic implementations and unusual architectural
+decisions.
 
-**Rationale**: A privacy-focused app with client-side encryption has zero
-margin for type confusion or implicit data shapes. Strict typing catches
-encryption schema mismatches at compile time, not at runtime when user data
-is at risk.
+**Rationale**: A privacy-focused app with client-side encryption and a
+zero-knowledge server has zero margin for type confusion or implicit data
+shapes. Strict typing catches encryption schema mismatches at compile time,
+not at runtime when user data is at risk.
 
 ### V. Robust Error Boundaries
 
 Error boundaries and fallback UI MUST be implemented for all critical
 subsystems: Service Worker lifecycle events, IndexedDB storage quota limits,
-and encryption/decryption failures. The app MUST degrade gracefully — a
-crypto failure MUST NOT cause a blank screen or silent data loss.
+encryption/decryption failures, authentication failures, and sync errors.
+The app MUST degrade gracefully — a crypto failure MUST NOT cause a blank
+screen or silent data loss. Sync failures MUST NOT block local operations;
+the app MUST remain fully functional offline when sync is unavailable.
 
-**Rationale**: Offline-first apps with client-side encryption have more
-failure modes than typical SPAs. Users MUST always understand the app's state
-and never lose data silently.
+**Rationale**: Offline-first apps with client-side encryption and
+cross-device sync have more failure modes than typical SPAs. Users MUST
+always understand the app's state and never lose data silently.
 
 ### VI. Git Flow & Commit Discipline
 
@@ -133,19 +176,45 @@ in a deployable state — no "WIP" or "fix later" commits that rot.
 The following technology choices are binding and MUST NOT be substituted
 without a constitution amendment:
 
+### Client (PWA)
+
 - **Frontend Framework**: React via TanStack Start
 - **UI Component Library**: Chakra UI or Mantine (one MUST be chosen and
   used consistently; minimize custom CSS)
-- **Database/Storage**: IndexedDB wrapped with Dexie.js, using client-side
-  encryption. SQLite Wasm with encryption is an acceptable alternative only
-  if relational query capabilities are required.
+- **Client Storage**: IndexedDB wrapped with Dexie.js, using client-side
+  encryption via the Web Crypto API (AES-256-GCM). SQLite Wasm with
+  encryption is an acceptable alternative only if relational query
+  capabilities are required.
 - **PWA Tooling**: Valid `manifest.json`, Service Worker with aggressive
   caching, installability across desktop and mobile
-- **Encryption**: Web Crypto API or `dexie-encrypted`
+- **Authentication SDK**: `@auth0/auth0-react` (Auth0 SPA SDK with PKCE)
 
-Adding new runtime dependencies MUST be justified against this stack. No
-server-side components, backend services, or cloud storage integrations are
-permitted.
+### Server (Sync API)
+
+- **Compute**: Cloudflare Workers
+- **Database**: Cloudflare D1 (SQLite on edge)
+- **Authentication Provider**: Auth0 (managed identity service)
+- **Server Framework**: Hono (edge-native web framework)
+- **JWT Verification**: `jose` (Web Crypto API-based, zero dependencies)
+
+### Server Permitted Use
+
+Server-side components are authorized ONLY for:
+
+1. **User authentication and identity management** — delegated to Auth0.
+   The server verifies JWTs but never handles user passwords directly.
+2. **Encrypted data relay and storage** — the server stores and
+   transmits encrypted blobs. It MUST NOT decrypt, inspect, index, or
+   derive information from user payloads.
+3. **Rate limiting and abuse protection** — request throttling, account
+   creation limits, and storage quota enforcement.
+
+No server-side component may access, derive, or infer unencrypted user
+content. The server MUST treat all user payloads as opaque ciphertext.
+
+Adding new runtime dependencies MUST be justified against this stack.
+Third-party analytics, remote tracking, telemetry, or external data
+routing remain prohibited under all circumstances.
 
 ## AI Agent Interaction Guidelines
 
@@ -157,8 +226,10 @@ the Reflog codebase:
 - **Diff Precision**: When modifying existing files, MUST provide clear diffs
   or state exactly where code should be inserted or replaced.
 - **Security Enforcement**: MUST NOT suggest implementing third-party
-  analytics, remote tracking, or external data routing under any
-  circumstances. This is a hard constraint, not a preference.
+  analytics, remote tracking, telemetry, or external data routing. MUST NOT
+  introduce any code path where unencrypted user content is transmitted to
+  or stored on a server. Server-side code MUST treat all user payloads as
+  opaque ciphertext. These are hard constraints, not preferences.
 - **Conciseness**: Provide direct, working code solutions. Skip pleasantries
   and lengthy explanations unless specifically asked for a breakdown.
 - **Commit Compliance**: MUST verify all tests, build, linting, and
@@ -191,4 +262,4 @@ these principles.
 - Code reviews MUST flag violations of Principles I-VI.
 - Complexity beyond what is strictly required MUST be justified in writing.
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-19 | **Last Amended**: 2026-02-19
+**Version**: 2.0.0 | **Ratified**: 2026-02-19 | **Last Amended**: 2026-02-21

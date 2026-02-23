@@ -14,7 +14,7 @@ import { EntryList } from "@/components/timeline/EntryList";
 import { EmptyState } from "@/components/timeline/EmptyState";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
 
-export const Route = createFileRoute("/timeline")({
+export const Route = createFileRoute("/_app/timeline")({
   component: TimelinePage,
 });
 
