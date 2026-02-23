@@ -132,7 +132,9 @@ function ViewEntryPage() {
           <Container size="sm">
             <Stack gap="md">
               <Group justify="space-between">
-                <Title order={2}>{typeof entry.title === "string" ? entry.title : ""}</Title>
+                <Title order={2}>
+                  {typeof entry.title === "string" ? entry.title : ""}
+                </Title>
                 <Group gap="xs">
                   {isEdited && (
                     <Badge size="sm" variant="light" color="gray">
@@ -155,7 +157,9 @@ function ViewEntryPage() {
                 </Group>
               )}
 
-              <MarkdownPreview content={typeof entry.body === "string" ? entry.body : ""} />
+              <MarkdownPreview
+                content={typeof entry.body === "string" ? entry.body : ""}
+              />
             </Stack>
           </Container>
         </AppShell.Main>
