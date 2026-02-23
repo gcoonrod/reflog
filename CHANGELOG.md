@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-02-23
+
+### Fixed
+- Move header actions (sync indicator, lock button, account menu) from fixed-position overlay into each page's AppShell header to eliminate z-index conflicts that caused Playwright to hang on intercepted click targets
+
 ## [1.0.7] - 2026-02-23
 
 ### Fixed
