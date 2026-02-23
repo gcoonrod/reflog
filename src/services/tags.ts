@@ -78,7 +78,8 @@ export async function getAllWithCounts(): Promise<TagWithCount[]> {
   const counts = new Map<string, number>();
 
   for (const entry of entries) {
-    for (const tag of entry.tags) {
+    const tags = Array.isArray(entry.tags) ? entry.tags : [];
+    for (const tag of tags) {
       counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
   }

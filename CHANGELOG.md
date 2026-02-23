@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-02-23
+
+### Fixed
+- Crash "tags is not iterable" when auto-lock fires during in-flight render, causing encryption middleware to return raw `{ciphertext, iv}` objects instead of decrypted arrays. Added defensive `Array.isArray` guards in tags service, entries service, EntryCard, entry detail, and SearchPalette
+
 ## [1.0.4] - 2026-02-23
 
 ### Fixed

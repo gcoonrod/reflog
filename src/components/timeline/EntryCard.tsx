@@ -50,7 +50,7 @@ export function EntryCard({ entry }: EntryCardProps) {
         </Text>
       )}
 
-      {entry.tags.length > 0 && (
+      {Array.isArray(entry.tags) && entry.tags.length > 0 && (
         <Group gap={4}>
           {entry.tags.map((tag) => (
             <Badge key={tag} size="xs" variant="light">
