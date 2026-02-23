@@ -6,6 +6,32 @@ import { encryptForSync, decryptFromSync } from "@/services/syncCrypto";
 import type { Entry, SyncRecord } from "@/types";
 import type { SyncQueueEntry } from "@/db/schema";
 
+const TABLE_TO_RECORD_TYPE: Record<string, SyncRecord["recordType"]> = {
+  entries: "entry",
+  settings: "setting",
+  vault_meta: "vault_meta",
+};
+
+const RECORD_TYPE_TO_TABLE: Record<SyncRecord["recordType"], string> = {
+  entry: "entries",
+  setting: "settings",
+  vault_meta: "vault_meta",
+};
+
+async function applyChange(
+  recordType: SyncRecord["recordType"],
+  id: string,
+  decryptedData: unknown,
+  isTombstone: boolean,
+): Promise<void> {
+  const tableName = RECORD_TYPE_TO_TABLE[recordType];
+  if (isTombstone) {
+    await db.table(tableName).delete(id);
+  } else {
+    await db.table(tableName).put(decryptedData);
+  }
+}
+
 export type SyncEventType =
   | "sync-start"
   | "sync-complete"
@@ -87,7 +113,9 @@ export async function push(
 
       return {
         id: entry.recordId,
-        recordType: entry.tableName as SyncRecord["recordType"],
+        recordType:
+          TABLE_TO_RECORD_TYPE[entry.tableName] ??
+          ("entry" as SyncRecord["recordType"]),
         encryptedPayload,
         isTombstone,
         deviceId,
@@ -95,21 +123,28 @@ export async function push(
     }),
   );
 
-  // Push in batches of 100
+  // Push in batches of 100, track conflicted record IDs
+  const conflictedRecordIds = new Set<string>();
   for (let i = 0; i < changes.length; i += 100) {
     const batch = changes.slice(i, i + 100);
-    await syncApi.push(token, {
+    const response = await syncApi.push(token, {
       changes: batch,
       deviceId,
       lastPullTimestamp,
     });
+    for (const conflict of response.conflicts) {
+      conflictedRecordIds.add(conflict.id);
+    }
   }
 
-  // Delete processed queue entries
-  const queueIds = queue
+  // Only delete queue entries for accepted records (not conflicted ones)
+  const acceptedQueueIds = queue
+    .filter((e) => !conflictedRecordIds.has(e.recordId))
     .map((e) => e.id)
     .filter((id): id is number => id !== undefined);
-  await db.sync_queue.bulkDelete(queueIds);
+  if (acceptedQueueIds.length > 0) {
+    await db.sync_queue.bulkDelete(acceptedQueueIds);
+  }
 }
 
 export async function pull(
@@ -129,11 +164,13 @@ export async function pull(
     setSyncing(true);
     try {
       for (const change of response.changes) {
+        const tableName = RECORD_TYPE_TO_TABLE[change.recordType];
+
         if (change.isTombstone) {
-          // Check for edit-wins-over-delete
+          // Check for edit-wins-over-delete using the correct table name
           const hasUnsynced = await db.sync_queue
             .where("[tableName+recordId]")
-            .equals([change.recordType, change.id])
+            .equals([tableName, change.id])
             .count();
 
           if (hasUnsynced > 0) {
@@ -148,37 +185,42 @@ export async function pull(
             continue;
           }
 
-          await db.entries.delete(change.id);
+          await applyChange(change.recordType, change.id, null, true);
           changedIds.push(change.id);
           continue;
         }
 
         // Decrypt the record
-        const decrypted = (await decryptFromSync(
+        const decrypted = await decryptFromSync(
           change.encryptedPayload,
           cryptoKey,
-        )) as Entry;
+        );
 
-        // LWW: check if local version is newer
-        const local = await db.entries.get(change.id);
-        if (local && change.updatedAt && local.updatedAt > change.updatedAt) {
-          // Local is newer — skip, it will push next cycle
-          continue;
-        }
+        // LWW: check if local version is newer (only for entries with updatedAt)
+        if (change.recordType === "entry") {
+          const local = await db.entries.get(change.id);
+          if (local && change.updatedAt && local.updatedAt > change.updatedAt) {
+            // Local is newer — skip, it will push next cycle
+            continue;
+          }
 
-        // Apply remote version
-        const hadLocal = !!local;
-        await db.entries.put(decrypted);
-        changedIds.push(change.id);
+          const hadLocal = !!local;
+          await applyChange("entry", change.id, decrypted, false);
+          changedIds.push(change.id);
 
-        if (hadLocal) {
-          emit({
-            type: "conflict-resolved",
-            detail: {
-              conflictTitle: decrypted.title,
-              conflictType: "updated",
-            },
-          });
+          if (hadLocal) {
+            emit({
+              type: "conflict-resolved",
+              detail: {
+                conflictTitle: (decrypted as Entry).title,
+                conflictType: "updated",
+              },
+            });
+          }
+        } else {
+          // Settings and vault_meta: always apply remote version
+          await applyChange(change.recordType, change.id, decrypted, false);
+          changedIds.push(change.id);
         }
       }
     } finally {
@@ -240,11 +282,11 @@ export async function initialSync(
         for (const change of response.changes) {
           if (change.isTombstone) continue;
 
-          const decrypted = (await decryptFromSync(
+          const decrypted = await decryptFromSync(
             change.encryptedPayload,
             cryptoKey,
-          )) as Entry;
-          await db.entries.put(decrypted);
+          );
+          await applyChange(change.recordType, change.id, decrypted, false);
           totalProcessed++;
         }
       } finally {

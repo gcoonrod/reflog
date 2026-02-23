@@ -39,11 +39,18 @@ export interface UserContext {
   email: string;
 }
 
+export interface ParsedPushBody {
+  changes: unknown[];
+  deviceId: string;
+  lastPullTimestamp: string;
+}
+
 export type AppEnv = {
   Bindings: Env;
   Variables: {
     auth: AuthContext;
     user: UserContext;
+    parsedPushBody?: ParsedPushBody;
   };
 };
 
@@ -79,7 +86,7 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<void> {
     const result = await env.DB.prepare(
-      "DELETE FROM sync_records WHERE is_tombstone = 1 AND updated_at < datetime('now', '-90 days')",
+      "DELETE FROM sync_records WHERE is_tombstone = 1 AND updated_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-90 days')",
     ).run();
     console.log(`Tombstone GC: purged ${result.meta.changes ?? 0} records`);
   },

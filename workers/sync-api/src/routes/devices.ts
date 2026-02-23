@@ -41,11 +41,13 @@ deviceRoutes.post("/register", async (c) => {
   const deviceId = crypto.randomUUID();
   await createDevice(db, deviceId, user.userId, body.name).run();
 
+  const now = new Date().toISOString();
   return c.json(
     {
       id: deviceId,
       name: body.name,
-      registeredAt: new Date().toISOString(),
+      registeredAt: now,
+      lastSeenAt: now,
     },
     201
   );
@@ -86,5 +88,5 @@ deviceRoutes.delete("/:deviceId", async (c) => {
 
   await deleteDevice(db, deviceId, user.userId).run();
 
-  return c.json({ success: true });
+  return c.body(null, 204);
 });

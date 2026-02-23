@@ -44,7 +44,7 @@ accountRoutes.delete("/", async (c) => {
   // ON DELETE CASCADE handles devices and sync_records cleanup
   await deleteUser(db, user.userId).run();
 
-  return c.json({ success: true });
+  return c.body(null, 204);
 });
 
 // GET /export — export all user data
@@ -57,6 +57,7 @@ accountRoutes.get("/export", async (c) => {
     record_type: string;
     encrypted_payload: string;
     is_tombstone: number;
+    device_id: string;
     version: number;
     updated_at: string;
   }>();
@@ -67,6 +68,7 @@ accountRoutes.get("/export", async (c) => {
       recordType: r.record_type,
       encryptedPayload: r.encrypted_payload,
       isTombstone: r.is_tombstone === 1,
+      deviceId: r.device_id,
       version: r.version,
       updatedAt: r.updated_at,
     })),

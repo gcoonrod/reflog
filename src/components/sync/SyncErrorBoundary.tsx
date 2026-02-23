@@ -51,12 +51,15 @@ export class SyncErrorBoundary extends Component<Props, State> {
     }
   }
 
-  render(): ReactNode {
-    // Always render children — sync errors should not block the UI.
-    // The error boundary resets itself so the sync subsystem can retry.
-    if (this.state.hasError) {
+  componentDidUpdate(_prevProps: Props, prevState: State): void {
+    if (this.state.hasError && !prevState.hasError) {
       this.setState({ hasError: false });
     }
+  }
+
+  render(): ReactNode {
+    // Always render children — sync errors should not block the UI.
+    // The boundary resets in componentDidUpdate so the sync subsystem can retry.
     return this.props.children;
   }
 }

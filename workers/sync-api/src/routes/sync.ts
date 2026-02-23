@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { AppEnv } from "../index";
+import type { AppEnv, ParsedPushBody } from "../index";
 import {
   upsertSyncRecord,
   findSyncRecord,
@@ -42,7 +42,11 @@ syncRoutes.post("/push", async (c) => {
   const user = c.get("user");
   const db = c.env.DB;
 
-  const body = await c.req.json<PushRequestBody>();
+  // Body already validated and parsed by pushValidationMiddleware
+  const parsed = c.get("parsedPushBody") as ParsedPushBody | undefined;
+  const body: PushRequestBody = parsed
+    ? { changes: parsed.changes as PushChange[], deviceId: parsed.deviceId, lastPullTimestamp: parsed.lastPullTimestamp }
+    : await c.req.json<PushRequestBody>();
 
   if (!Array.isArray(body.changes) || !body.deviceId || !body.lastPullTimestamp) {
     return c.json(
@@ -112,7 +116,7 @@ syncRoutes.post("/push", async (c) => {
   if (projectedUsage > storageResult.storage_quota_bytes) {
     return c.json(
       {
-        error: "quota_exceeded",
+        error: "storage_quota_exceeded",
         message: "Storage quota exceeded",
         storageUsedBytes: storageResult.storage_used_bytes,
         storageQuotaBytes: storageResult.storage_quota_bytes,
@@ -134,6 +138,7 @@ syncRoutes.post("/push", async (c) => {
       recordType: r.record_type,
       encryptedPayload: r.encrypted_payload,
       isTombstone: r.is_tombstone === 1,
+      deviceId: r.device_id,
       version: r.version,
       updatedAt: r.updated_at,
     })),
@@ -189,6 +194,7 @@ syncRoutes.get("/pull", async (c) => {
       recordType: r.record_type,
       encryptedPayload: r.encrypted_payload,
       isTombstone: r.is_tombstone === 1,
+      deviceId: r.device_id,
       version: r.version,
       updatedAt: r.updated_at,
     })),

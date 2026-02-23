@@ -96,7 +96,7 @@ export function findDevice(
 export function updateDeviceLastSeen(db: D1Database, deviceId: string) {
   return db
     .prepare(
-      "UPDATE devices SET last_seen_at = datetime('now') WHERE id = ?"
+      "UPDATE devices SET last_seen_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"
     )
     .bind(deviceId);
 }
@@ -116,14 +116,14 @@ export function upsertSyncRecord(
   return db
     .prepare(
       `INSERT INTO sync_records (id, user_id, record_type, encrypted_payload, payload_size_bytes, is_tombstone, device_id, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
        ON CONFLICT(id) DO UPDATE SET
          encrypted_payload = excluded.encrypted_payload,
          payload_size_bytes = excluded.payload_size_bytes,
          is_tombstone = excluded.is_tombstone,
          device_id = excluded.device_id,
          version = sync_records.version + 1,
-         updated_at = datetime('now')`
+         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`
     )
     .bind(
       id,
@@ -208,7 +208,7 @@ export function deleteTombstones(db: D1Database, olderThanDays: number) {
     .prepare(
       `DELETE FROM sync_records
        WHERE is_tombstone = 1
-         AND updated_at < datetime('now', '-' || ? || ' days')`
+         AND updated_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-' || ? || ' days')`
     )
     .bind(olderThanDays);
 }

@@ -103,5 +103,12 @@ export const pushValidationMiddleware: MiddlewareHandler<AppEnv> = async (
     }
   }
 
+  // Store parsed body on context so the handler doesn't re-read the stream
+  c.set("parsedPushBody", {
+    changes: body.changes,
+    deviceId: body.deviceId,
+    lastPullTimestamp: body.lastPullTimestamp,
+  });
+
   await next();
 };
