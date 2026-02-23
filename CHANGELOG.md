@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-23
+
+### Fixed
+- Correct Dexie middleware registration order — sync middleware now captures plaintext instead of already-encrypted payloads, eliminating double-encryption that caused blank entries after lock/unlock cycle
+- False "Entry updated from another device" notifications caused by LWW comparing client timestamps against server timestamps; now compares client-side `updatedAt` with `>=`
+- Data export downloading raw ciphertext `{ciphertext, iv}` objects instead of decrypted plaintext; export now unwraps legacy-encrypted fields before writing JSON
+- Add `unwrapLegacyEncryptedFields` helper to handle records pushed before the middleware-order fix (backward-compatible with both old and new format)
+
+### Changed
+- Entry title field on new/edit pages now shows a dashed underline affordance to indicate editability, with solid border on hover and primary color on focus
+
 ## [1.0.8] - 2026-02-23
 
 ### Fixed
