@@ -250,6 +250,11 @@ jobs:
 
       - name: Build
         if: steps.version.outputs.skip == 'false'
+        env:
+          VITE_AUTH0_DOMAIN: ${{ secrets.VITE_AUTH0_DOMAIN }}
+          VITE_AUTH0_CLIENT_ID: ${{ secrets.VITE_AUTH0_CLIENT_ID }}
+          VITE_AUTH0_AUDIENCE: ${{ secrets.VITE_AUTH0_AUDIENCE }}
+          VITE_SYNC_API_URL: ${{ secrets.VITE_SYNC_API_URL }}
         run: yarn build
 
       # TanStack Start outputs _shell.html as the SPA entry point.
