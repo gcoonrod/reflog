@@ -204,7 +204,7 @@ These notes cover implementation decisions that span multiple tasks. Individual 
 
 The existing `src/db/encryption.ts` is a Dexie DBCore middleware that transparently encrypts fields (`title`, `body`, `tags` on entries; `value` on settings) for local IndexedDB storage. The new `src/db/middleware.ts` (sync tracking) will intercept mutations to write `sync_queue` records.
 
-**Registration order matters.** The sync middleware MUST be registered OUTSIDE (before) the encryption middleware so it captures **plaintext** records for the sync payload:
+**Registration order matters.** Dexie stacks middlewares so the **last** registered via `db.use()` becomes the **outermost** layer (closest to application code). The encryption middleware must be registered **first** (inner, closest to IndexedDB) and the sync middleware **second** (outer, closest to the app) so it captures **plaintext** records for the sync payload:
 
 ```
 App write → Sync Middleware (captures plaintext for sync_queue.payload)
@@ -216,8 +216,8 @@ App read  → IndexedDB → Encryption Middleware (decrypts) → App
 
 In `src/db/index.ts`, register middleware in this order:
 ```typescript
-db.use(createSyncMiddleware());       // Outer: sees plaintext
-db.use(createEncryptionMiddleware()); // Inner: encrypts for storage
+db.use(encryptionMiddleware);  // Inner (first): encrypts for storage
+db.use(syncMiddleware);        // Outer (second): sees plaintext
 ```
 
 The `sync_queue.payload` field stores a **plaintext JSON snapshot** of the record. This is safe because `sync_queue` is local-only (never leaves the device). The sync engine separately encrypts this payload for transport using the sync encryption pipeline (see § A3).

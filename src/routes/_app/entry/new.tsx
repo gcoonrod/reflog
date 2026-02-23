@@ -19,6 +19,7 @@ import { useStorageUsage } from "@/hooks/useStorageUsage";
 import { extractFromBody, mergeTags } from "@/services/tags";
 import { defaultEntryTitle } from "@/utils/date";
 import { AppHeaderActions } from "@/components/layout/AppHeaderActions";
+import classes from "@/components/editor/EditableTitle.module.css";
 
 export const Route = createFileRoute("/_app/entry/new")({
   component: NewEntryPage,
@@ -211,7 +212,7 @@ function NewEntryPage() {
                 }}
                 size="lg"
                 variant="unstyled"
-                styles={{ input: { fontWeight: 600 } }}
+                classNames={{ input: classes.input }}
               />
               <EditorTabs value={body} onChange={setBody} autoFocus />
               <TagInput tags={tags} onChange={setTags} />
