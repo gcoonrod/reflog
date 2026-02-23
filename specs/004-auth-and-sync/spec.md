@@ -115,7 +115,7 @@ As the developer, I want the sync service to be protected against DDoS attacks, 
 
 #### Cross-Device Sync
 
-- **FR-009**: System MUST sync journal entries (title, body, tags, status, timestamps), settings, and vault metadata across all devices where the user is authenticated and the vault is unlocked.
+- **FR-009**: System MUST sync journal entries (title, body, tags, status, timestamps) and settings across all devices where the user is authenticated and the vault is unlocked. Vault metadata (cryptographic salts, IVs, verification blobs) is device-local and MUST NOT be synced — each device derives its own vault key from the user's passphrase independently.
 - **FR-010**: System MUST encrypt all synced data end-to-end using the user's vault passphrase as the encryption key source. The server MUST never have access to plaintext journal content.
 - **FR-011**: System MUST support offline operation — changes made while offline are queued and synced automatically when connectivity is restored.
 - **FR-012**: System MUST resolve sync conflicts using a last-write-wins strategy based on server-assigned timestamps, and MUST notify the user when a conflict has been resolved.
@@ -139,7 +139,7 @@ As the developer, I want the sync service to be protected against DDoS attacks, 
 
 - **User Account**: Represents a registered user. Associated with an email address, authentication state, and a set of registered devices. Independent from vault encryption — the account credential and vault passphrase are separate secrets.
 - **Device**: Represents a specific browser/device where the user has logged in. Tracks sync state (last sync timestamp, pending changes). A user may have multiple active devices.
-- **Sync Record**: An encrypted blob representing a journal entry, setting, or vault metadata change. Contains the encrypted payload, a version identifier, the originating device, and a server-assigned timestamp. The server stores only the encrypted form.
+- **Sync Record**: An encrypted blob representing a journal entry or setting change. Contains the encrypted payload, a version identifier, the originating device, and a server-assigned timestamp. The server stores only the encrypted form.
 - **Session**: The combination of authentication state (logged in/out) and vault state (locked/unlocked). A session can be: unauthenticated, authenticated+locked, or authenticated+unlocked.
 
 ## Success Criteria *(mandatory)*

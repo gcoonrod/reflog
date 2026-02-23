@@ -169,6 +169,15 @@ The Worker (backend) deploys before Pages (frontend):
 - Pages never needs explicit rollback — a failed `pages deploy` leaves the previous deployment active
 - **D1 migrations are NOT rolled back**: All DDL is additive and idempotent (`CREATE IF NOT EXISTS`). Old Worker code ignores new tables/columns. Breaking schema changes require a separate multi-phase migration strategy.
 
+### Worker Configuration (`wrangler.toml`)
+
+The Worker configuration includes:
+- **D1 binding**: `reflog-sync` database bound as `DB`
+- **Rate limiting**: Two Cloudflare Rate Limiting bindings (`RATE_LIMITER_IP` at 100 req/60s, `RATE_LIMITER_USER` at 200 req/60s)
+- **Observability**: Worker logs enabled via `[observability.logs]` with `enabled = true` and `invocation_logs = true`
+- **Cron triggers**: Tombstone GC runs daily at 3 AM UTC via `[triggers] crons`
+- **Auth0 vars**: `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` set in `[vars]`
+
 ### Health Check
 
 The Worker health check (5 retries, 5s delay) calls `GET /api/v1/health` which verifies D1 connectivity via `SELECT 1` ([`workers/sync-api/src/routes/health.ts`](../../workers/sync-api/src/routes/health.ts)). This catches deployment issues (misconfigured bindings, runtime errors) before the frontend is updated.

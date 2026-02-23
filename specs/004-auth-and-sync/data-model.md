@@ -28,7 +28,7 @@ The core journal entry table. Extended with sync metadata.
 **Index changes**: Add `deletedAt` to compound index for filtering active entries: `[status+createdAt]` → `[status+deletedAt+createdAt]`.
 
 #### `vault_meta`
-No schema changes. Vault metadata syncs as a regular sync record (type: `vault_meta`).
+No schema changes. Vault metadata is **device-local only** and is explicitly excluded from sync. It stores binary cryptographic material (PBKDF2 salt, AES-GCM IV, verification blob) as `Uint8Array` values that cannot survive JSON serialization round-trips. Each device derives its own vault key from the user's passphrase independently.
 
 #### `settings`
 No schema changes. Settings sync as regular sync records (type: `setting`).
@@ -41,7 +41,7 @@ Tracks local changes pending sync to server. Written by Dexie DBCore middleware.
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | `number` | Auto-increment primary key |
-| `tableName` | `string` | Source table: `"entries"`, `"settings"`, `"vault_meta"` |
+| `tableName` | `string` | Source table: `"entries"`, `"settings"` |
 | `recordId` | `string` | ID of the changed record |
 | `operation` | `"create" \| "update" \| "delete"` | Type of change |
 | `timestamp` | `string` | ISO 8601 timestamp of local change |
@@ -116,7 +116,7 @@ Encrypted sync data. The server cannot read the `encrypted_payload` field.
 |--------|------|-------------|-------------|
 | `id` | `TEXT` | PRIMARY KEY | UUID matching client-side record ID |
 | `user_id` | `TEXT` | NOT NULL REFERENCES users(id) ON DELETE CASCADE | Owner |
-| `record_type` | `TEXT` | NOT NULL | `"entry"`, `"setting"`, `"vault_meta"` |
+| `record_type` | `TEXT` | NOT NULL | `"entry"`, `"setting"` |
 | `encrypted_payload` | `TEXT` | NOT NULL | Base64-encoded AES-256-GCM ciphertext |
 | `payload_size_bytes` | `INTEGER` | NOT NULL | Size of encrypted payload (for quota tracking) |
 | `version` | `INTEGER` | NOT NULL DEFAULT 1 | Monotonically increasing per record |
@@ -201,7 +201,7 @@ Sliding window rate limit counters.
 
 ### Server-Side
 - `encrypted_payload`: Base64-encoded string, max 256 KB per record.
-- `record_type`: Must be one of `"entry"`, `"setting"`, `"vault_meta"`.
+- `record_type`: Must be one of `"entry"`, `"setting"`.
 - `user_id`: Must match authenticated user's ID.
 - Total `storage_used_bytes` must not exceed `storage_quota_bytes` (checked on push).
 

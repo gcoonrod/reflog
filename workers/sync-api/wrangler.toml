@@ -16,6 +16,8 @@ database_id = "0f8e68b4-13e4-4899-96b8-cb9cb4cefa91"
 [observability.logs]
 enabled = true
 invocation_logs = true
+[observability.traces]
+enabled = false
 
 # Rate limiting (T044) — built-in Cloudflare Rate Limiting binding
 [[ratelimits]]
