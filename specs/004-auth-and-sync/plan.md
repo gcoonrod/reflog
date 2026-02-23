@@ -138,3 +138,37 @@ tests/                            # Existing test directory, extended
 | FR-019 | Account deletion endpoint | Worker: `DELETE /account`, [contracts/sync-api.yaml](./contracts/sync-api.yaml) |
 | FR-020 | Data export endpoint | Worker: `GET /account/export`, [contracts/sync-api.yaml](./contracts/sync-api.yaml) |
 | SC-004 | $5/month Cloudflare Workers Paid + Auth0 Free | [research.md R5](./research.md#r5-auth0-free-tier--combined-cost-analysis) |
+
+## Deployment Pipeline
+
+The CI workflow at `.github/workflows/ci.yml` handles both PR quality gates and production deployment. On merge to main, after all CI jobs pass (lint, typecheck, format-check, unit-tests, e2e-tests, worker-typecheck, dependency-audit), the `deploy` job runs:
+
+```text
+Version guard → Changelog guard → Build → D1 migrations → Worker deploy → Health check → Pages deploy → Git tag
+```
+
+### Deployment Order Rationale
+
+The Worker (backend) deploys before Pages (frontend):
+- **Old UI + New API**: The existing UI in production tolerates a new backwards-compatible API
+- **New UI + Old API**: A new UI deployed before its API could call endpoints that don't exist, causing user-facing errors
+
+### Failure Matrix
+
+| Scenario | Action | Production State |
+|----------|--------|-----------------|
+| D1 migration fails | Stop | Unchanged |
+| Worker deploy fails | Stop | Unchanged (old Worker still live) |
+| Health check fails | `wrangler rollback` Worker | Restored |
+| Pages deploy fails | `wrangler rollback` Worker | Restored (old Pages still live) |
+| All succeed | Tag + summarize | Updated |
+
+### Rollback Mechanics
+
+- `wrangler rollback --name=reflog-sync-api --yes` rolls back to the immediately previous Worker version
+- Pages never needs explicit rollback — a failed `pages deploy` leaves the previous deployment active
+- **D1 migrations are NOT rolled back**: All DDL is additive and idempotent (`CREATE IF NOT EXISTS`). Old Worker code ignores new tables/columns. Breaking schema changes require a separate multi-phase migration strategy.
+
+### Health Check
+
+The Worker health check (5 retries, 5s delay) calls `GET /api/v1/health` which verifies D1 connectivity via `SELECT 1` ([`workers/sync-api/src/routes/health.ts`](../../workers/sync-api/src/routes/health.ts)). This catches deployment issues (misconfigured bindings, runtime errors) before the frontend is updated.

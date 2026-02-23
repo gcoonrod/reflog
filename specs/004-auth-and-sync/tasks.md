@@ -149,7 +149,7 @@
 - [x] T049 Implement migration detection in `src/hooks/useVault.ts`: after authentication (check `useAuth().isAuthenticated`), check if local vault exists (`vault.isSetUp()` — see [quickstart.md § A6](./quickstart.md#a6-existing-codebase-context) for current `src/services/vault.ts`) AND `sync_meta.deviceId` is absent ([data-model.md § sync_meta](./data-model.md#sync_meta)). If so, redirect to `/migrate` instead of the normal unlock flow. After successful migration, proceed to normal `authenticated+locked` state.
 - [x] T050 [P] Implement account deletion flow in client: add "Delete Account" option to `AccountMenu` (T024). Show a Mantine Modal confirmation dialog requiring the user to type their email to confirm. On confirmation, call `syncApi.deleteAccount()` (T034, endpoint per [contracts/sync-api.yaml § DELETE /account](./contracts/sync-api.yaml)), clear all local Dexie data (all tables per [data-model.md § Client-Side Schema](./data-model.md#client-side-schema-dexiejs--indexeddb)), call Auth0 `logout()`, redirect to login.
 - [x] T051 [P] Implement data export flow in client: add "Export Data" option to `AccountMenu` (T024). Call `syncApi.exportData()` (T034, endpoint per [contracts/sync-api.yaml § /account/export](./contracts/sync-api.yaml)), receive `ExportResponse` with encrypted records, decrypt each using `decryptFromSync()` ([quickstart.md § A3](./quickstart.md#a3-sync-encryption-pipeline-t035-t056)), assemble into a JSON file with entries, settings, and metadata, trigger browser download as `reflog-export-{date}.json`.
-- [x] T052 Update CI workflow at `.github/workflows/ci.yml`: add a `worker-typecheck` job that runs `cd workers/sync-api && npm install && npx tsc --noEmit` to typecheck the Worker code. Add it to the existing PR jobs (currently: lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit — see [quickstart.md § A6](./quickstart.md#a6-existing-codebase-context)). The Worker deployment itself remains manual via `npx wrangler deploy` for now.
+- [x] T052 Update CI workflow at `.github/workflows/ci.yml`: add a `worker-typecheck` job that runs `cd workers/sync-api && npm install && npx tsc --noEmit` to typecheck the Worker code. Add it to the existing PR jobs (currently: lint, typecheck, format-check, unit-tests, e2e-tests, dependency-audit — see [quickstart.md § A6](./quickstart.md#a6-existing-codebase-context)). Worker deployment to production is automated via CI (T064).
 - [x] T053 Update `src/routes/__root.tsx` to integrate all new components into the root layout: ensure Auth0Provider wraps everything (outermost, above MantineProvider), AuthGuard gates the app (below Auth0Provider), header contains LockButton (T025), SyncIndicator (T040), and AccountMenu (T024) in correct order, sync engine initializes on vault unlock (T043). Verify no import ordering issues. See [quickstart.md § A6](./quickstart.md#a6-existing-codebase-context) for the current `__root.tsx` structure: MantineProvider → VaultProvider → ErrorBoundary → layout with AutoLockWatcher, GlobalShortcuts, SearchPalette, ReloadPrompt, StorageWarning, MultiTabWarning, Notifications, Outlet.
 
 #### Error Boundaries (Constitution Principle V)
@@ -174,10 +174,11 @@
 - [x] T060 E2E tests for sync flow at `tests/e2e/sync.spec.ts`: Playwright tests simulating multi-device sync. Create an entry in browser context A, verify it appears in browser context B (using separate Playwright contexts with shared auth). Test offline queue: disconnect network (via Playwright network emulation), create entry, reconnect, verify sync. See existing `tests/e2e/offline.spec.ts` for the project's offline testing pattern.
 - [x] T060a Validate performance criteria: (1) SC-005 — measure sync round-trip time (push + pull) for a typical 5-entry sync on broadband; verify 95th percentile < 2 seconds. Test with Playwright network timing or `performance.now()` instrumentation in the sync engine. (2) SC-008 — measure lock and logout action time; verify < 2 seconds from button click to visual confirmation. (3) SC-006 — measure 429 rejection latency for rate-limited requests; verify < 100ms. Document results as a comment in the PR. These are the performance success criteria from spec.md that have no other dedicated test tasks.
 - [x] T061 Run full quality gate locally: `yarn typecheck && yarn lint && yarn test && yarn build && yarn test:e2e`. All must pass. Also run Worker typecheck: `cd workers/sync-api && npx tsc --noEmit`. This is the gate required by Constitution Principle VI.
-- [x] T062 Deploy Worker to production: `cd workers/sync-api && npx wrangler deploy`. Run D1 migration against remote: `npx wrangler d1 execute reflog-sync --remote --file=src/db/schema.sql`. Set secrets per [quickstart.md § Environment Variables](./quickstart.md#environment-variables): `npx wrangler secret put AUTH0_DOMAIN`, `npx wrangler secret put AUTH0_AUDIENCE`. Verify `https://reflog-sync-api.greg-coonrod.workers.dev/api/v1/health` returns 200.
+- [x] T062 **INITIAL ONLY**: Deploy Worker to production for the first time: `cd workers/sync-api && npx wrangler deploy`. Run D1 migration against remote: `npx wrangler d1 execute reflog-sync --remote --file=src/db/schema.sql`. Set secrets per [quickstart.md § Environment Variables](./quickstart.md#environment-variables): `npx wrangler secret put AUTH0_DOMAIN`, `npx wrangler secret put AUTH0_AUDIENCE`. Verify `https://reflog-sync-api.greg-coonrod.workers.dev/api/v1/health` returns 200. **Note**: Subsequent deployments are automated via CI (T064).
+- [x] T064 Add Worker deployment with atomic rollback to CI deploy job at `.github/workflows/ci.yml`: deploy the sync API Worker alongside Cloudflare Pages on merge to main. Deployment order: D1 migrations (`wrangler d1 execute reflog-sync --remote`) → Worker deploy (`cloudflare/wrangler-action@v3` with `workingDirectory: workers/sync-api`) → health check (curl `/api/v1/health` with 5x retry, 5s delay) → Pages deploy → git tag. On failure after Worker deploys, `wrangler rollback --name=reflog-sync-api --yes` restores the previous Worker version. Pages never needs explicit rollback (failed deploy leaves previous version active). D1 migrations are NOT rolled back (all DDL uses `CREATE IF NOT EXISTS`). Step IDs: `d1-migrations`, `worker-deploy`, `health-check`, `pages-deploy`. Deployment summary shows component status table. Rollback summary on failure shows each component's outcome.
 - [ ] T063 End-to-end production verification: create an account on `https://reflog.microcode.io`, create a journal entry, open the app on a second device/browser, log in, unlock vault, verify the entry syncs. Test lock, logout, and re-login flows. Verify sync indicator states (synced, syncing, offline). Check Cloudflare analytics for request metrics.
 
-**Checkpoint**: All tests pass. Quality gate clean. Worker deployed. Production sync verified end-to-end.
+**Checkpoint**: All tests pass. Quality gate clean. Worker deployed (initial manual + subsequent via CI with atomic rollback). Production sync verified end-to-end.
 
 ---
 
@@ -233,6 +234,7 @@ Phase 3 (US1: Auth) ───────┤                                    
 | T053a-T053b | T015-T020, T033-T043 | Auth + sync must exist for error boundaries |
 | T054-T063 | T048-T053b | All features must be integrated |
 | T060a | T054-T060 | Needs working sync + tests for measurement |
+| T064 | T052 | CI deploy job must exist with worker-typecheck gate |
 
 ### Parallel Opportunities
 
@@ -258,6 +260,9 @@ T050 (account deletion) ‖ T051 (data export) — independent features
 
 # Phase 8: Unit tests are all parallel
 T054 (sync engine) ‖ T055 (middleware) ‖ T056 (encryption) — different test files
+
+# CI/CD: Worker deployment pipeline
+T064 (Worker CI deploy) — independent of test tasks, depends only on T052
 ```
 
 ---
@@ -291,7 +296,8 @@ T001 → T002 ‖ T003 ‖ T004 → T005/T006 (manual)
   → T029-T032 (server) → T033-T043 (client sync)
   → T044 ‖ T045, then T046-T047 (US4)
   → T048-T053 (polish)
-  → T054 ‖ T055 ‖ T056, then T057-T063 (testing + deploy)
+  → T054 ‖ T055 ‖ T056 ‖ T064 (tests + CI deploy pipeline)
+  → T057-T063 (contract/integration/e2e tests + verification)
 ```
 
 ---
@@ -308,4 +314,6 @@ T001 → T002 ‖ T003 ‖ T004 → T005/T006 (manual)
 - The `rate_limits` D1 table in data-model.md is a fallback design only. Use Cloudflare's built-in binding (T044) as the primary strategy. See [quickstart.md § A5](./quickstart.md#a5-rate-limiting-strategy-t007-t044).
 - Error boundary components (T053a, T053b) satisfy Constitution Principle V — auth and sync failures must degrade gracefully without crashing the app or blocking offline usage.
 - Performance validation (T060a) covers SC-005 (sync < 2s), SC-006 (rejection < 100ms), and SC-008 (lock/logout < 2s) — the success criteria with no other dedicated test tasks.
+- Worker deployment is automated via CI (T064). On merge to main, the deploy job runs D1 migrations, deploys the Worker, runs a health check, then deploys Pages. Failure at any step after Worker deploy triggers `wrangler rollback`. D1 migrations are intentionally NOT rolled back (additive, idempotent DDL). See [plan.md § Deployment Pipeline](./plan.md#deployment-pipeline) for the full failure matrix.
+- T062 (initial Worker deploy) is still required for the first deployment and secret configuration. After that, CI handles all subsequent deploys.
 - The total code delta spans: ~22 new files in `src/`, ~15 new files in `workers/sync-api/`, ~10 new test files, plus modifications to ~8 existing files.
