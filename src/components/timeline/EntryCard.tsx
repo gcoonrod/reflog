@@ -11,8 +11,10 @@ export function EntryCard({ entry }: EntryCardProps) {
   const navigate = useNavigate();
   const isEdited = entry.updatedAt !== entry.createdAt;
 
-  // Create a preview snippet from the body (first ~120 chars, stripped of markdown)
-  const snippet = entry.body
+  // Create a preview snippet from the body (first ~120 chars, stripped of markdown).
+  // Guard: if vault locks mid-render, encrypted fields may be raw {ciphertext, iv} objects.
+  const body = typeof entry.body === "string" ? entry.body : "";
+  const snippet = body
     .replace(/[#*_~`>\[\]()!]/g, "")
     .replace(/\n+/g, " ")
     .trim()
@@ -30,7 +32,7 @@ export function EntryCard({ entry }: EntryCardProps) {
     >
       <Group justify="space-between" mb="xs">
         <Text fw={600} lineClamp={1} style={{ flex: 1 }}>
-          {entry.title}
+          {typeof entry.title === "string" ? entry.title : ""}
         </Text>
         <Group gap="xs" wrap="nowrap">
           {isEdited && (
