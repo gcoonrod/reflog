@@ -2,7 +2,7 @@
 
 export interface SyncRecord {
   id: string;
-  recordType: "entry" | "setting" | "vault_meta";
+  recordType: "entry" | "setting";
   encryptedPayload: string;
   isTombstone?: boolean;
   deviceId: string;
