@@ -23,16 +23,17 @@ CREATE TABLE IF NOT EXISTS devices (
 CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);
 
 CREATE TABLE IF NOT EXISTS sync_records (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   record_type TEXT NOT NULL,
   encrypted_payload TEXT NOT NULL,
   payload_size_bytes INTEGER NOT NULL,
   version INTEGER NOT NULL DEFAULT 1,
   is_tombstone INTEGER NOT NULL DEFAULT 0,
-  device_id TEXT NOT NULL REFERENCES devices(id),
+  device_id TEXT REFERENCES devices(id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (user_id, id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_sync_records_user_updated

@@ -3,6 +3,7 @@ import type { AppEnv, ParsedPushBody } from "../index";
 import {
   upsertSyncRecord,
   findSyncRecord,
+  findDevice,
   pullSyncRecords,
   pullSyncRecordsWithCursor,
   getUserStorage,
@@ -58,6 +59,15 @@ syncRoutes.post("/push", async (c) => {
   if (body.changes.length > 100) {
     return c.json(
       { error: "bad_request", message: "Maximum 100 changes per push" },
+      400
+    );
+  }
+
+  // Validate deviceId belongs to authenticated user
+  const device = await findDevice(db, body.deviceId, user.userId).first();
+  if (!device) {
+    return c.json(
+      { error: "bad_request", message: "Device not registered or not owned by user" },
       400
     );
   }

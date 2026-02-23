@@ -87,8 +87,39 @@ export const pushValidationMiddleware: MiddlewareHandler<AppEnv> = async (
     );
   }
 
-  for (const change of body.changes) {
-    const rec = change as Record<string, unknown>;
+  const VALID_RECORD_TYPES = new Set(["entry", "setting", "vault_meta"]);
+
+  for (let i = 0; i < body.changes.length; i++) {
+    const rec = body.changes[i] as Record<string, unknown>;
+
+    if (typeof rec.id !== "string" || rec.id.length === 0) {
+      return c.json(
+        { error: "bad_request", message: `changes[${i}].id must be a non-empty string` },
+        400,
+      );
+    }
+
+    if (typeof rec.recordType !== "string" || !VALID_RECORD_TYPES.has(rec.recordType)) {
+      return c.json(
+        { error: "bad_request", message: `changes[${i}].recordType must be one of: entry, setting, vault_meta` },
+        400,
+      );
+    }
+
+    if (typeof rec.isTombstone !== "boolean") {
+      return c.json(
+        { error: "bad_request", message: `changes[${i}].isTombstone must be a boolean` },
+        400,
+      );
+    }
+
+    if (!rec.isTombstone && typeof rec.encryptedPayload !== "string") {
+      return c.json(
+        { error: "bad_request", message: `changes[${i}].encryptedPayload must be a string for non-tombstone records` },
+        400,
+      );
+    }
+
     if (
       typeof rec.encryptedPayload === "string" &&
       rec.encryptedPayload.length > MAX_ENCRYPTED_PAYLOAD_LENGTH
@@ -96,7 +127,7 @@ export const pushValidationMiddleware: MiddlewareHandler<AppEnv> = async (
       return c.json(
         {
           error: "bad_request",
-          message: `encryptedPayload exceeds maximum length of ${MAX_ENCRYPTED_PAYLOAD_LENGTH}`,
+          message: `changes[${i}].encryptedPayload exceeds maximum length of ${MAX_ENCRYPTED_PAYLOAD_LENGTH}`,
         },
         400,
       );

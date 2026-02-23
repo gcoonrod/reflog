@@ -117,7 +117,7 @@ export function upsertSyncRecord(
     .prepare(
       `INSERT INTO sync_records (id, user_id, record_type, encrypted_payload, payload_size_bytes, is_tombstone, device_id, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-       ON CONFLICT(id) DO UPDATE SET
+       ON CONFLICT(user_id, id) DO UPDATE SET
          encrypted_payload = excluded.encrypted_payload,
          payload_size_bytes = excluded.payload_size_bytes,
          is_tombstone = excluded.is_tombstone,
