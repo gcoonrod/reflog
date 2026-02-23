@@ -15,6 +15,7 @@ import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 import { useEntry } from "@/hooks/useEntries";
 import * as entryService from "@/services/entries";
 import { formatRelativeDate } from "@/utils/date";
+import { AppHeaderActions } from "@/components/layout/AppHeaderActions";
 
 export const Route = createFileRoute("/_app/entry/$id/")({
   component: ViewEntryPage,
@@ -34,10 +35,11 @@ function ViewEntryPage() {
     return (
       <AppShell header={{ height: 56 }} padding="md">
         <AppShell.Header>
-          <Group h="100%" px="md">
+          <Group h="100%" px="md" justify="space-between">
             <Title order={4} ff="monospace">
               Entry Not Found
             </Title>
+            <AppHeaderActions />
           </Group>
         </AppShell.Header>
         <AppShell.Main>
@@ -124,6 +126,7 @@ function ViewEntryPage() {
               >
                 Delete
               </Button>
+              <AppHeaderActions />
             </Group>
           </Group>
         </AppShell.Header>
