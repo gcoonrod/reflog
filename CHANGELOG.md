@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-02-23
+
+### Fixed
+- Extend auto-lock race condition guards to `title` and `body` fields — `body.replace` crash in EntryCard snippet and MarkdownPreview crash in entry detail when encrypted `{ciphertext, iv}` objects leak through
+
 ## [1.0.5] - 2026-02-23
 
 ### Fixed
