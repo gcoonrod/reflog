@@ -1,5 +1,6 @@
 // T033: Dexie DBCore middleware for sync change tracking.
-// Registered BEFORE encryption middleware so it captures plaintext (see quickstart § A1).
+// Registered AFTER encryption middleware so Dexie stacks it as the outermost
+// layer, letting it capture plaintext before encryption touches it (see quickstart § A1).
 // Uses a lazy Dexie reference to write to sync_queue in a separate transaction,
 // since DBCore transactions are scoped to the mutated table only.
 

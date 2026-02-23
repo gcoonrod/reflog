@@ -3,6 +3,7 @@ import db from "@/db";
 import { setSyncing } from "@/db/middleware";
 import * as syncApi from "@/services/syncApi";
 import { encryptForSync, decryptFromSync } from "@/services/syncCrypto";
+import { decrypt } from "@/services/crypto";
 import type { Entry, SyncRecord } from "@/types";
 import type { SyncQueueEntry } from "@/db/schema";
 
@@ -15,6 +16,58 @@ const RECORD_TYPE_TO_TABLE: Record<SyncRecord["recordType"], string> = {
   entry: "entries",
   setting: "settings",
 };
+
+/**
+ * Reconstruct a Uint8Array from a JSON-round-tripped plain object
+ * whose keys are stringified numeric indices (e.g. {"0":65,"1":66}).
+ * Derives length from the highest numeric key + 1 so sparse or
+ * non-contiguous indices don't silently truncate the buffer.
+ */
+export function toUint8Array(obj: Record<string, number>): Uint8Array {
+  const numericKeys = Object.keys(obj)
+    .map(Number)
+    .filter((k) => Number.isInteger(k) && k >= 0);
+  if (numericKeys.length === 0) {
+    throw new Error("Legacy encrypted field has no valid byte indices");
+  }
+  const length = Math.max(...numericKeys) + 1;
+  const arr = new Uint8Array(length);
+  for (const k of numericKeys) {
+    arr[k] = obj[String(k)] ?? 0;
+  }
+  return arr;
+}
+
+/**
+ * Records pushed before the middleware-order fix have locally-encrypted
+ * fields ({ciphertext, iv} as plain objects from JSON round-trip).
+ * Detect and decrypt them so applyChange receives plaintext.
+ */
+export async function unwrapLegacyEncryptedFields(
+  record: Record<string, unknown>,
+  key: CryptoKey,
+): Promise<Record<string, unknown>> {
+  const clone = { ...record };
+  for (const [field, value] of Object.entries(clone)) {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      "ciphertext" in value &&
+      "iv" in value
+    ) {
+      const encObj = value as Record<string, Record<string, number>>;
+      const ctObj = encObj.ciphertext;
+      const ivObj = encObj.iv;
+      if (!ctObj || !ivObj) continue;
+      const ct = toUint8Array(ctObj);
+      const iv = toUint8Array(ivObj);
+      const plaintext = await decrypt(ct, iv, key);
+      clone[field] = JSON.parse(plaintext) as unknown;
+    }
+  }
+  return clone;
+}
 
 async function applyChange(
   recordType: SyncRecord["recordType"],
@@ -188,31 +241,42 @@ export async function pull(
           continue;
         }
 
-        // Decrypt the record
-        const decrypted = await decryptFromSync(
+        // Decrypt the record and unwrap any legacy-encrypted fields
+        const rawDecrypted = await decryptFromSync(
           change.encryptedPayload,
           cryptoKey,
         );
+        const decrypted = await unwrapLegacyEncryptedFields(
+          rawDecrypted as Record<string, unknown>,
+          cryptoKey,
+        );
 
-        // LWW: check if local version is newer (only for entries with updatedAt)
+        // LWW: compare client-side timestamps (not server timestamps)
         if (change.recordType === "entry") {
           const local = await db.entries.get(change.id);
-          if (local && change.updatedAt && local.updatedAt > change.updatedAt) {
-            // Local is newer — skip, it will push next cycle
+          const incoming = decrypted as unknown as Entry;
+
+          if (
+            local &&
+            incoming.updatedAt &&
+            local.updatedAt >= incoming.updatedAt
+          ) {
+            // Local is same version or newer — skip
             continue;
           }
 
-          const hadLocal = !!local;
           await applyChange("entry", change.id, decrypted, false);
           changedIds.push(change.id);
 
-          if (hadLocal) {
+          // Notify only when a pre-existing entry was overwritten by
+          // a genuinely newer remote version (not an echo of our own push)
+          if (local) {
             emit({
               type: "conflict-resolved",
               detail: {
                 conflictTitle:
-                  typeof (decrypted as Entry).title === "string"
-                    ? (decrypted as Entry).title
+                  typeof incoming.title === "string"
+                    ? incoming.title
                     : undefined,
                 conflictType: "updated",
               },
@@ -283,8 +347,12 @@ export async function initialSync(
         for (const change of response.changes) {
           if (change.isTombstone) continue;
 
-          const decrypted = await decryptFromSync(
+          const rawDecrypted = await decryptFromSync(
             change.encryptedPayload,
+            cryptoKey,
+          );
+          const decrypted = await unwrapLegacyEncryptedFields(
+            rawDecrypted as Record<string, unknown>,
             cryptoKey,
           );
           await applyChange(change.recordType, change.id, decrypted, false);
