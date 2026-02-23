@@ -12,6 +12,11 @@ binding = "DB"
 database_name = "reflog-sync"
 database_id = "0f8e68b4-13e4-4899-96b8-cb9cb4cefa91"
 
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # Rate limiting (T044) — built-in Cloudflare Rate Limiting binding
 [[ratelimits]]
 name = "RATE_LIMITER_IP"

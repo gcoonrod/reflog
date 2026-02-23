@@ -1,9 +1,11 @@
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { IconLock } from "@tabler/icons-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useVault } from "@/hooks/useVault";
 
 export function LockButton() {
   const { status, lock } = useVault();
+  const navigate = useNavigate();
 
   if (status !== "unlocked") {
     return null;
@@ -14,7 +16,10 @@ export function LockButton() {
       <ActionIcon
         variant="subtle"
         size="lg"
-        onClick={lock}
+        onClick={() => {
+          lock();
+          void navigate({ to: "/unlock" });
+        }}
         aria-label="Lock vault"
       >
         <IconLock size={18} />
