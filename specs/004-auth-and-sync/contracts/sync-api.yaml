@@ -222,7 +222,7 @@ components:
           description: Client-generated record UUID
         recordType:
           type: string
-          enum: [entry, setting, vault_meta]
+          enum: [entry, setting]
         encryptedPayload:
           type: string
           description: Base64-encoded AES-256-GCM ciphertext

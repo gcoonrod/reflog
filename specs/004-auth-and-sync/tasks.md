@@ -38,8 +38,8 @@
 
 **⚠ CRITICAL**: Phases 3–6 cannot begin until this phase is complete.
 
-- [ ] T005 ⏳ **MANUAL**: Set up Auth0 account, create SPA application, create API (audience: `https://sync.reflog.microcode.io`), enable social connections (GitHub, Google), enable Refresh Token Rotation, configure Attack Protection (brute-force: 10 attempts/15 min, suspicious IP throttling, breached password detection). Follow [quickstart.md § Auth0 Setup](./quickstart.md#auth0-setup-one-time) steps 1–8 — note step 5 covers social connection setup (GitHub OAuth App + Google OAuth 2.0 credential). Record Auth0 Domain, Client ID, and API Audience.
-- [ ] T006 ⏳ **MANUAL**: Subscribe to Cloudflare Workers Paid plan ($5/month), create D1 database (`npx wrangler d1 create reflog-sync`), record database ID in `workers/sync-api/wrangler.toml`. Worker is accessed via its `workers.dev` URL (no custom domain — Route 53/AWS manages `microcode.io`). Follow [quickstart.md § Cloudflare Workers Setup](./quickstart.md#cloudflare-workers-setup-one-time).
+- [x] T005 ⏳ **MANUAL**: Set up Auth0 account, create SPA application, create API (audience: `https://sync.reflog.microcode.io`), enable social connections (GitHub, Google), enable Refresh Token Rotation, configure Attack Protection (brute-force: 10 attempts/15 min, suspicious IP throttling, breached password detection). Follow [quickstart.md § Auth0 Setup](./quickstart.md#auth0-setup-one-time) steps 1–8 — note step 5 covers social connection setup (GitHub OAuth App + Google OAuth 2.0 credential). Record Auth0 Domain, Client ID, and API Audience.
+- [x] T006 ⏳ **MANUAL**: Subscribe to Cloudflare Workers Paid plan ($5/month), create D1 database (`npx wrangler d1 create reflog-sync`), record database ID in `workers/sync-api/wrangler.toml`. Worker is accessed via its `workers.dev` URL (no custom domain — Route 53/AWS manages `microcode.io`). Follow [quickstart.md § Cloudflare Workers Setup](./quickstart.md#cloudflare-workers-setup-one-time).
 - [x] T007 Create D1 schema migration at `workers/sync-api/src/db/schema.sql` with `users`, `devices`, and `sync_records` tables per [data-model.md § Server-Side Schema](./data-model.md#server-side-schema-cloudflare-d1--sqlite). Include all indexes (`idx_users_auth0_sub`, `idx_devices_user_id`, `idx_sync_records_user_updated`, `idx_sync_records_user_type`, `idx_sync_records_tombstone_gc`). **Do NOT create the `rate_limits` table** — rate limiting uses Cloudflare's built-in binding instead (see [quickstart.md § A5](./quickstart.md#a5-rate-limiting-strategy-t007-t044)). Run migration against local D1 with `npx wrangler d1 execute reflog-sync --local --file=src/db/schema.sql`.
 - [x] T008 [P] Implement Hono app entry point at `workers/sync-api/src/index.ts`: create Hono app with typed `Bindings` (DB: D1Database, RATE_LIMITER_IP, RATE_LIMITER_USER), mount CORS middleware (T010), mount route groups matching [contracts/sync-api.yaml](./contracts/sync-api.yaml) endpoint paths: `/api/v1/sync` (push, pull), `/api/v1/devices` (register, delete), `/api/v1/account` (usage, delete, export), `/api/v1/health`. Export default app. For the Hono pattern with Cloudflare Workers, see [research.md R2](./research.md#r2-cloudflare-workers--d1-for-sync-api-backend).
 - [x] T009 [P] Implement JWT verification middleware at `workers/sync-api/src/middleware/auth.ts` using `jose` v6.x `createRemoteJWKSet` + `jwtVerify`. Verify Auth0 RS256 tokens against `https://{AUTH0_DOMAIN}/.well-known/jwks.json`. Extract `sub` claim and attach to Hono request context. Return 401 with error body matching [contracts/sync-api.yaml § responses/Unauthorized](./contracts/sync-api.yaml). AUTH0_DOMAIN and AUTH0_AUDIENCE are read from `env` bindings (see [quickstart.md § Complete wrangler.toml Reference](./quickstart.md#complete-wrangler-toml-reference) for var names). See [research.md R1 § JWT Structure](./research.md#r1-auth0-spa-integration-for-react-19--tanstack-start) for token claims.
@@ -176,7 +176,7 @@
 - [x] T061 Run full quality gate locally: `yarn typecheck && yarn lint && yarn test && yarn build && yarn test:e2e`. All must pass. Also run Worker typecheck: `cd workers/sync-api && npx tsc --noEmit`. This is the gate required by Constitution Principle VI.
 - [x] T062 **INITIAL ONLY**: Deploy Worker to production for the first time: `cd workers/sync-api && npx wrangler deploy`. Run D1 migration against remote: `npx wrangler d1 execute reflog-sync --remote --file=src/db/schema.sql`. Set secrets per [quickstart.md § Environment Variables](./quickstart.md#environment-variables): `npx wrangler secret put AUTH0_DOMAIN`, `npx wrangler secret put AUTH0_AUDIENCE`. Verify `https://reflog-sync-api.greg-coonrod.workers.dev/api/v1/health` returns 200. **Note**: Subsequent deployments are automated via CI (T064).
 - [x] T064 Add Worker deployment with atomic rollback to CI deploy job at `.github/workflows/ci.yml`: deploy the sync API Worker alongside Cloudflare Pages on merge to main. Deployment order: D1 migrations (`wrangler d1 execute reflog-sync --remote`) → Worker deploy (`cloudflare/wrangler-action@v3` with `workingDirectory: workers/sync-api`) → health check (curl `/api/v1/health` with 5x retry, 5s delay) → Pages deploy → git tag. On failure after Worker deploys, `wrangler rollback --name=reflog-sync-api --yes` restores the previous Worker version. Pages never needs explicit rollback (failed deploy leaves previous version active). D1 migrations are NOT rolled back (all DDL uses `CREATE IF NOT EXISTS`). Step IDs: `d1-migrations`, `worker-deploy`, `health-check`, `pages-deploy`. Deployment summary shows component status table. Rollback summary on failure shows each component's outcome.
-- [ ] T063 End-to-end production verification: create an account on `https://reflog.microcode.io`, create a journal entry, open the app on a second device/browser, log in, unlock vault, verify the entry syncs. Test lock, logout, and re-login flows. Verify sync indicator states (synced, syncing, offline). Check Cloudflare analytics for request metrics.
+- [x] T063 End-to-end production verification: create an account on `https://reflog.microcode.io`, create a journal entry, open the app on a second device/browser, log in, unlock vault, verify the entry syncs. Test lock, logout, and re-login flows. Verify sync indicator states (synced, syncing, offline). Check Cloudflare analytics for request metrics.
 
 **Checkpoint**: All tests pass. Quality gate clean. Worker deployed (initial manual + subsequent via CI with atomic rollback). Production sync verified end-to-end.
 
@@ -317,3 +317,32 @@ T001 → T002 ‖ T003 ‖ T004 → T005/T006 (manual)
 - Worker deployment is automated via CI (T064). On merge to main, the deploy job runs D1 migrations, deploys the Worker, runs a health check, then deploys Pages. Failure at any step after Worker deploy triggers `wrangler rollback`. D1 migrations are intentionally NOT rolled back (additive, idempotent DDL). See [plan.md § Deployment Pipeline](./plan.md#deployment-pipeline) for the full failure matrix.
 - T062 (initial Worker deploy) is still required for the first deployment and secret configuration. After that, CI handles all subsequent deploys.
 - The total code delta spans: ~22 new files in `src/`, ~15 new files in `workers/sync-api/`, ~10 new test files, plus modifications to ~8 existing files.
+
+### Production Hotfixes (T063 Verification)
+
+T063 production verification uncovered seven issues requiring hotfix releases (1.0.1–1.0.7). All were resolved and deployed:
+
+| Version | Issue | Root Cause | Fix |
+|---------|-------|-----------|-----|
+| 1.0.1 | CI deploy build missing Vite env vars | `env:` block not passed to build step | Added env vars to build step in `ci.yml` |
+| 1.0.2 | CORS rejecting requests from Pages URL | `reflog-8t5.pages.dev` not in allowed origins | Added Pages URL to `cors.ts` |
+| 1.0.3 | Device registration 404 | `VITE_SYNC_API_URL` secret missing `/api/v1` path | Updated GitHub secret |
+| 1.0.4 | Sync push 500 on upsert | D1 `sync_records` had old single-column PK, `ON CONFLICT(user_id, id)` failed | `DROP TABLE IF EXISTS` + recreate with composite PK |
+| 1.0.5 | "tags is not iterable" crash | Auto-lock race: `visibilitychange` clears encryption key, Dexie returns raw `{ciphertext, iv}` objects | `Array.isArray` guards in 5 files |
+| 1.0.6 | "body.replace is not a function" crash | Same auto-lock race affecting `body` and `title` fields | `typeof === "string"` guards in EntryCard and entry detail |
+| 1.0.7 | PBKDF2 "salt: Not a BufferSource" on unlock | `vault_meta` synced through JSON pipeline, `Uint8Array` salt lost TypedArray type | Removed `vault_meta` from sync pipeline entirely |
+
+### Post-Hotfix Polish Fixes
+
+Three UX issues found during T063 were resolved in a follow-up PR:
+
+1. **Lock button z-index overlap** — `AppHeaderActions` `zIndex: 100` was below Mantine AppShell header content; increased to `1000`
+2. **Lock button doesn't redirect to /unlock** — Button click handler only called `lock()` without navigating (keyboard shortcut did both); added `navigate({ to: "/unlock" })`
+3. **Sync conflict notification shows `[object Object]`** — `conflictTitle` could be an encrypted object during auto-lock race; added `typeof` guards at emission and display
+4. **Worker observability** — Enabled `[observability.logs]` with `invocation_logs=true` in `wrangler.toml`
+
+### Architecture Corrections from Hotfixes
+
+- **T033 (sync middleware)**: `vault_meta` was removed from `SYNCED_TABLES` in hotfix 1.0.7. The middleware now only tracks `entries` and `settings`. Vault metadata is device-local because it contains binary cryptographic material (`Uint8Array` salt, IV) that cannot survive JSON round-trip serialization.
+- **T010 (CORS)**: The Pages deployment URL (`reflog-8t5.pages.dev`) was added to allowed origins in hotfix 1.0.2.
+- **T007 (D1 schema)**: The `sync_records` table required a `DROP TABLE IF EXISTS` before `CREATE` to fix the composite PK in hotfix 1.0.4. The `CREATE TABLE IF NOT EXISTS` pattern cannot alter existing tables.

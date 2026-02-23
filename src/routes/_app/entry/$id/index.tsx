@@ -132,7 +132,9 @@ function ViewEntryPage() {
           <Container size="sm">
             <Stack gap="md">
               <Group justify="space-between">
-                <Title order={2}>{entry.title}</Title>
+                <Title order={2}>
+                  {typeof entry.title === "string" ? entry.title : ""}
+                </Title>
                 <Group gap="xs">
                   {isEdited && (
                     <Badge size="sm" variant="light" color="gray">
@@ -145,7 +147,7 @@ function ViewEntryPage() {
                 </Group>
               </Group>
 
-              {entry.tags.length > 0 && (
+              {Array.isArray(entry.tags) && entry.tags.length > 0 && (
                 <Group gap={4}>
                   {entry.tags.map((tag) => (
                     <Badge key={tag} size="sm" variant="light">
@@ -155,7 +157,9 @@ function ViewEntryPage() {
                 </Group>
               )}
 
-              <MarkdownPreview content={entry.body} />
+              <MarkdownPreview
+                content={typeof entry.body === "string" ? entry.body : ""}
+              />
             </Stack>
           </Container>
         </AppShell.Main>

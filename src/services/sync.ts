@@ -9,13 +9,11 @@ import type { SyncQueueEntry } from "@/db/schema";
 const TABLE_TO_RECORD_TYPE: Record<string, SyncRecord["recordType"]> = {
   entries: "entry",
   settings: "setting",
-  vault_meta: "vault_meta",
 };
 
 const RECORD_TYPE_TO_TABLE: Record<SyncRecord["recordType"], string> = {
   entry: "entries",
   setting: "settings",
-  vault_meta: "vault_meta",
 };
 
 async function applyChange(
@@ -212,13 +210,16 @@ export async function pull(
             emit({
               type: "conflict-resolved",
               detail: {
-                conflictTitle: (decrypted as Entry).title,
+                conflictTitle:
+                  typeof (decrypted as Entry).title === "string"
+                    ? (decrypted as Entry).title
+                    : undefined,
                 conflictType: "updated",
               },
             });
           }
         } else {
-          // Settings and vault_meta: always apply remote version
+          // Settings: always apply remote version
           await applyChange(change.recordType, change.id, decrypted, false);
           changedIds.push(change.id);
         }

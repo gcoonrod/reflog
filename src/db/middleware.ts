@@ -7,7 +7,7 @@ import type { DBCore, Middleware } from "dexie";
 import type { ReflogDB } from "./schema";
 import { nowISO } from "@/utils/date";
 
-const SYNCED_TABLES = new Set(["entries", "settings", "vault_meta"]);
+const SYNCED_TABLES = new Set(["entries", "settings"]);
 const EXCLUDED_TABLES = new Set(["sync_queue", "sync_meta"]);
 
 let _isSyncing = false;

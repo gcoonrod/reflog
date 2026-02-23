@@ -22,6 +22,11 @@ CREATE TABLE IF NOT EXISTS devices (
 
 CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);
 
+-- Recreate sync_records to apply composite PK (user_id, id).
+-- Safe: no production user data exists yet. Remove this DROP once
+-- the composite PK is the only schema that has ever been deployed.
+DROP TABLE IF EXISTS sync_records;
+
 CREATE TABLE IF NOT EXISTS sync_records (
   id TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
