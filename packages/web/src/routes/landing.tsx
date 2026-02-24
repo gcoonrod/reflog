@@ -38,7 +38,10 @@ function LandingPage() {
       const response = await fetch(`${apiUrl}/api/v1/waitlist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), consent: true }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          consent: true,
+        }),
       });
 
       const data = (await response.json()) as {
@@ -113,13 +116,17 @@ function LandingPage() {
                     type="email"
                     placeholder="your@email.com"
                     value={email}
-                    onChange={(e) => { setEmail(e.currentTarget.value); }}
+                    onChange={(e) => {
+                      setEmail(e.currentTarget.value);
+                    }}
                     required
                   />
                   <Checkbox
                     size="xs"
                     checked={consent}
-                    onChange={(e) => { setConsent(e.currentTarget.checked); }}
+                    onChange={(e) => {
+                      setConsent(e.currentTarget.checked);
+                    }}
                     label={
                       <>
                         I agree to the{" "}

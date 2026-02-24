@@ -1,5 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Center, Stack, Title, Text, Button, Loader, Container, Alert } from "@mantine/core";
+import {
+  Center,
+  Stack,
+  Title,
+  Text,
+  Button,
+  Loader,
+  Container,
+  Alert,
+} from "@mantine/core";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "@tanstack/react-router";
 
@@ -151,7 +160,13 @@ function InviteGateInner({ children }: InviteGateProps) {
           <Text c="dimmed" ta="center" size="sm">
             We couldn&apos;t verify your invite status. Please try again later.
           </Text>
-          <Button onClick={() => { setStatus("checking"); }} variant="light" fullWidth>
+          <Button
+            onClick={() => {
+              setStatus("checking");
+            }}
+            variant="light"
+            fullWidth
+          >
             Retry
           </Button>
         </Stack>

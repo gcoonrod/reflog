@@ -1,4 +1,9 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
 import { notifications } from "@mantine/notifications";
 import { Anchor, Group, Text } from "@mantine/core";
@@ -156,23 +161,23 @@ function AppLayout() {
   return (
     <AuthGuard>
       <InviteGate>
-      <VaultProvider>
-        <AutoLockWatcher />
-        <GlobalShortcuts />
-        <SyncErrorBoundary>
-          <SyncConflictNotifier />
-          <SyncLifecycle />
-        </SyncErrorBoundary>
-        <ErrorBoundary fallback={null}>
-          <SearchPalette />
-        </ErrorBoundary>
-        <ReloadPrompt />
-        <StorageWarning>
-          <MultiTabWarning />
-          <Outlet />
-        </StorageWarning>
-        <AppFooter />
-      </VaultProvider>
+        <VaultProvider>
+          <AutoLockWatcher />
+          <GlobalShortcuts />
+          <SyncErrorBoundary>
+            <SyncConflictNotifier />
+            <SyncLifecycle />
+          </SyncErrorBoundary>
+          <ErrorBoundary fallback={null}>
+            <SearchPalette />
+          </ErrorBoundary>
+          <ReloadPrompt />
+          <StorageWarning>
+            <MultiTabWarning />
+            <Outlet />
+          </StorageWarning>
+          <AppFooter />
+        </VaultProvider>
       </InviteGate>
     </AuthGuard>
   );
