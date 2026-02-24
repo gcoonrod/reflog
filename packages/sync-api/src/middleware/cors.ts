@@ -8,11 +8,11 @@ import type { AppEnv } from "../index";
  */
 function patternToRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  const withWildcard = escaped.replace(/\\\*/g, "[\\w-]+");
+  const withWildcard = escaped.replace(/\*/g, "[\\w-]+");
   return new RegExp(`^${withWildcard}$`);
 }
 
-function isAllowedOrigin(origin: string, patterns: string[]): boolean {
+export function isAllowedOrigin(origin: string, patterns: string[]): boolean {
   for (const pattern of patterns) {
     if (pattern.includes("*")) {
       if (patternToRegex(pattern).test(origin)) return true;
@@ -23,19 +23,30 @@ function isAllowedOrigin(origin: string, patterns: string[]): boolean {
   return false;
 }
 
-export const corsMiddleware = createMiddleware<AppEnv>(async (c, next) => {
-  const raw = c.env.ALLOWED_ORIGINS ?? "";
-  const patterns = raw
+export function parseOrigins(raw: string): string[] {
+  return raw
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+}
 
-  const handler = cors({
-    origin: (origin) => (isAllowedOrigin(origin, patterns) ? origin : ""),
-    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type"],
-    maxAge: 86400,
-  });
+// Cache the cors handler per ALLOWED_ORIGINS value (constant within a Worker instance)
+let cachedRaw: string | undefined;
+let cachedHandler: ReturnType<typeof cors> | undefined;
 
-  return handler(c, next);
+export const corsMiddleware = createMiddleware<AppEnv>(async (c, next) => {
+  const raw = c.env.ALLOWED_ORIGINS ?? "";
+
+  if (raw !== cachedRaw) {
+    const patterns = parseOrigins(raw);
+    cachedHandler = cors({
+      origin: (origin) => (isAllowedOrigin(origin, patterns) ? origin : ""),
+      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+      allowHeaders: ["Authorization", "Content-Type"],
+      maxAge: 86400,
+    });
+    cachedRaw = raw;
+  }
+
+  return cachedHandler!(c, next);
 });
