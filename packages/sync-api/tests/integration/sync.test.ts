@@ -188,10 +188,11 @@ describe("user email self-healing", () => {
       .run();
 
     // Any authenticated request triggers the user middleware
-    await request("/devices/register", {
+    const res = await request("/devices/register", {
       method: "POST",
       body: JSON.stringify({ name: "Email Sync Test" }),
     });
+    expect(res.status).toBe(201);
 
     const user = await env.DB.prepare(
       "SELECT email FROM users WHERE id = ?",
@@ -210,10 +211,11 @@ describe("user email self-healing", () => {
       .bind("user-stale-email", "auth0|test-user-001", "old@example.com")
       .run();
 
-    await request("/devices/register", {
+    const res = await request("/devices/register", {
       method: "POST",
       body: JSON.stringify({ name: "Stale Email Test" }),
     });
+    expect(res.status).toBe(201);
 
     const user = await env.DB.prepare(
       "SELECT email FROM users WHERE id = ?",

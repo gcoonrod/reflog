@@ -5,7 +5,7 @@
  * extra Management API call.
  */
 exports.onExecutePostLogin = async (event, api) => {
-  if (event.user.email) {
+  if (event.user.email && event.user.email_verified) {
     api.accessToken.setCustomClaim(
       "https://reflog.app/claims/email",
       event.user.email,
