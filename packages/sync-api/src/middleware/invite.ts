@@ -34,8 +34,7 @@ export const inviteMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   }
 
   if (invite.status === "pending") {
-    const now = new Date().toISOString();
-    if (invite.expires_at > now) {
+    if (new Date(invite.expires_at) > new Date()) {
       // Valid pending invite — allow access
       await next();
       return;

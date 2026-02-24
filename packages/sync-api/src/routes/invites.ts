@@ -33,8 +33,7 @@ inviteRoutes.post("/verify", async (c) => {
 
   // Only pending invites check expiration
   if (invite.status === "pending") {
-    const now = new Date().toISOString();
-    if (invite.expires_at > now) {
+    if (new Date(invite.expires_at) > new Date()) {
       return c.json({ status: "valid", email: user.email }, 200);
     }
   }

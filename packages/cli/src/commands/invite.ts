@@ -4,6 +4,11 @@ import { loadConfig } from "../lib/config.js";
 import { createUser, triggerPasswordReset } from "../lib/auth0.js";
 import { query, type D1Options } from "../lib/d1.js";
 
+/** Escape a string for use in a SQLite literal by doubling single quotes. */
+function sqlEscape(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
 function getD1Options(cmd: Command): D1Options {
   const config = loadConfig();
   const parent = cmd.parent;
@@ -26,8 +31,9 @@ inviteCommand
     const d1Opts = getD1Options(inviteCommand);
 
     // Check for existing invite
+    const safeEmail = sqlEscape(email);
     const existing = await query(
-      `SELECT id, status FROM invites WHERE email = '${email}'`,
+      `SELECT id, status FROM invites WHERE email = '${safeEmail}'`,
       d1Opts
     );
     if (existing.results.length > 0) {
@@ -60,13 +66,13 @@ inviteCommand
 
     await query(
       `INSERT INTO invites (id, email, token, status, created_by, created_at, expires_at)
-       VALUES ('${inviteId}', '${email}', '${token}', 'pending', 'cli', '${now}', '${expiresAt}')`,
+       VALUES ('${inviteId}', '${safeEmail}', '${token}', 'pending', 'cli', '${now}', '${expiresAt}')`,
       d1Opts
     );
 
     if (opts.fromWaitlist) {
       await query(
-        `UPDATE waitlist SET invited = 1 WHERE email = '${email}'`,
+        `UPDATE waitlist SET invited = 1 WHERE email = '${safeEmail}'`,
         d1Opts
       );
       console.log(`Waitlist entry for ${email} marked as invited.`);
@@ -89,8 +95,15 @@ inviteCommand
     const d1Opts = getD1Options(inviteCommand);
     const now = new Date().toISOString();
 
+    const validStatuses = ["pending", "consumed", "expired", "revoked"];
     let sql = "SELECT * FROM invites ORDER BY created_at DESC";
     if (opts.status) {
+      if (!validStatuses.includes(opts.status)) {
+        console.error(
+          `Invalid status: ${opts.status}. Must be one of: ${validStatuses.join(", ")}`
+        );
+        process.exit(1);
+      }
       sql = `SELECT * FROM invites WHERE status = '${opts.status}' ORDER BY created_at DESC`;
     }
 
@@ -140,8 +153,9 @@ inviteCommand
   .action(async (email: string) => {
     const d1Opts = getD1Options(inviteCommand);
 
+    const safeEmail = sqlEscape(email);
     const result = await query(
-      `UPDATE invites SET status = 'revoked' WHERE email = '${email}' AND status = 'pending'`,
+      `UPDATE invites SET status = 'revoked' WHERE email = '${safeEmail}' AND status = 'pending'`,
       d1Opts
     );
 
