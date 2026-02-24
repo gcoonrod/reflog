@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "reflog-cli": "dist/index.js"
+    "reflog-cli": "dist/src/index.js"
   },
   "scripts": {
     "build": "tsc",

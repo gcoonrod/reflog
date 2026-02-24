@@ -3,6 +3,8 @@
 Last updated: 2026-02-23
 
 ## Active Technologies
+- TypeScript 5.x (strict mode, no `any`) + Commander.js (CLI framework), `auth0` SDK v4.x (invite create only), `dotenv` (env file loading), native `fetch` (D1 REST API — no new HTTP dependency needed in Node 22) (006-cli-d1-rest-api)
+- Cloudflare D1 (SQLite on edge) accessed via REST API (006-cli-d1-rest-api)
 
 - TypeScript 5.x (strict mode, no `any`)
 - Node.js 22.x (LTS), Yarn v1.x (Classic) with workspaces
@@ -66,7 +68,10 @@ yarn workspace @reflog/cli dev           # CLI via tsx
 - Root `yarn install` handles all packages (single lockfile)
 - `nohoist` for `wrangler`, `@cloudflare/workers-types`, `@cloudflare/vitest-pool-workers`
 - Shared types: import from `@reflog/shared` in web and sync-api
-- CLI accesses D1 via `wrangler d1 execute` subprocess (not HTTP)
+- CLI accesses D1 via REST API (native `fetch`, no wrangler dependency)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Recent Changes
+- 006-cli-d1-rest-api: Added TypeScript 5.x (strict mode, no `any`) + Commander.js (CLI framework), `auth0` SDK v4.x (invite create only), `dotenv` (env file loading), native `fetch` (D1 REST API — no new HTTP dependency needed in Node 22)
