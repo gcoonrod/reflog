@@ -74,20 +74,45 @@ const SCHEMA_SQL = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id)`,
   `CREATE TABLE IF NOT EXISTS sync_records (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     record_type TEXT NOT NULL,
     encrypted_payload TEXT NOT NULL,
     payload_size_bytes INTEGER NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
     is_tombstone INTEGER NOT NULL DEFAULT 0,
-    device_id TEXT NOT NULL REFERENCES devices(id),
+    device_id TEXT REFERENCES devices(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, id)
   )`,
   `CREATE INDEX IF NOT EXISTS idx_sync_records_user_updated ON sync_records(user_id, updated_at)`,
   `CREATE INDEX IF NOT EXISTS idx_sync_records_user_type ON sync_records(user_id, record_type)`,
   `CREATE INDEX IF NOT EXISTS idx_sync_records_tombstone_gc ON sync_records(is_tombstone, updated_at)`,
+  `CREATE TABLE IF NOT EXISTS invites (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    token TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT,
+    consumed_by_user_id TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS beta_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `INSERT OR IGNORE INTO beta_config (key, value) VALUES ('max_beta_users', '50')`,
+  `CREATE TABLE IF NOT EXISTS waitlist (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    consent INTEGER NOT NULL DEFAULT 1,
+    invited INTEGER NOT NULL DEFAULT 0
+  )`,
 ];
 
 beforeAll(async () => {
@@ -101,6 +126,12 @@ beforeEach(async () => {
   await env.DB.prepare("DELETE FROM sync_records").run();
   await env.DB.prepare("DELETE FROM devices").run();
   await env.DB.prepare("DELETE FROM users").run();
+  await env.DB.prepare("DELETE FROM invites").run();
+  // Seed a consumed invite for the test user so the invite middleware passes
+  await env.DB.prepare(
+    `INSERT OR REPLACE INTO invites (id, email, token, status, created_by, expires_at)
+     VALUES ('test-invite', 'test@example.com', 'test-token', 'consumed', 'test', datetime('now', '+30 days'))`,
+  ).run();
 });
 
 describe("health endpoint", () => {
@@ -449,7 +480,7 @@ describe("account management", () => {
 
   it("deletes account and cascades to devices and records", async () => {
     const res = await request("/account", { method: "DELETE" });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
 
     const users = await env.DB.prepare("SELECT COUNT(*) as count FROM users").first<{ count: number }>();
     expect(users!.count).toBe(0);

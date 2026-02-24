@@ -7,7 +7,15 @@ export const waitlistRoutes = new Hono<{ Bindings: Env }>();
 
 // POST /waitlist — add email to the beta waitlist
 waitlistRoutes.post("/", async (c) => {
-  const body = await c.req.json<{ email?: string; consent?: boolean }>();
+  let body: { email?: string; consent?: boolean };
+  try {
+    body = await c.req.json<{ email?: string; consent?: boolean }>();
+  } catch {
+    return c.json(
+      { error: "invalid_request", message: "Invalid or missing JSON body." },
+      400
+    );
+  }
 
   if (!body.email || typeof body.email !== "string") {
     return c.json(

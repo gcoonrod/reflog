@@ -62,7 +62,7 @@ import type { Invite } from '@reflog/shared';
 ## A2. Invite System Integration
 
 **Auth0 setup**:
-1. Disable public signup: Auth0 Dashboard → Authentication → Database → Settings → uncheck "Disable Sign Ups"
+1. Disable public signup: Auth0 Dashboard → Authentication → Database → Settings → enable "Disable Sign Ups"
 2. Create Management API application (Machine-to-Machine) for CLI tool
 3. Add pre-user-registration Action as safety net
 

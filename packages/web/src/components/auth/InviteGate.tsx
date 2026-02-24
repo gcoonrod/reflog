@@ -37,6 +37,7 @@ export function InviteGate({ children }: InviteGateProps) {
 function InviteGateInner({ children }: InviteGateProps) {
   const { user, getToken } = useAuth();
   const [status, setStatus] = useState<GateStatus>("checking");
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -87,7 +88,7 @@ function InviteGateInner({ children }: InviteGateProps) {
     return () => {
       cancelled = true;
     };
-  }, [user?.email, getToken]);
+  }, [user?.email, getToken, retryCount]);
 
   if (status === "checking") {
     return (
@@ -163,6 +164,7 @@ function InviteGateInner({ children }: InviteGateProps) {
           <Button
             onClick={() => {
               setStatus("checking");
+              setRetryCount((c) => c + 1);
             }}
             variant="light"
             fullWidth

@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../index";
-import { findInviteByEmail, consumeInvite } from "../db/queries";
+import {
+  findInviteByEmail,
+  consumeInvite,
+  countConsumedInvites,
+  getBetaConfig,
+} from "../db/queries";
 
 export const inviteRoutes = new Hono<AppEnv>();
 
@@ -16,9 +21,26 @@ inviteRoutes.post("/verify", async (c) => {
   }>();
 
   if (!invite) {
+    // Check if beta is at capacity to return appropriate error
+    const [consumedRow, configRow] = await Promise.all([
+      countConsumedInvites(db).first<{ count: number }>(),
+      getBetaConfig(db, "max_beta_users").first<{ value: string }>(),
+    ]);
+    const consumed = consumedRow?.count ?? 0;
+    const max = parseInt(configRow?.value ?? "0", 10);
+    if (max > 0 && consumed >= max) {
+      return c.json(
+        {
+          error: "beta_full" as const,
+          message:
+            "The Reflog beta is currently at capacity. Join the waitlist to be notified when a spot opens up.",
+        },
+        403
+      );
+    }
     return c.json(
       {
-        error: "invite_required",
+        error: "invite_required" as const,
         message:
           "A valid invite is required to access Reflog during the beta.",
       },
@@ -41,7 +63,7 @@ inviteRoutes.post("/verify", async (c) => {
   // Expired, revoked, or other status
   return c.json(
     {
-      error: "invite_required",
+      error: "invite_required" as const,
       message:
         "A valid invite is required to access Reflog during the beta.",
     },
@@ -78,6 +100,24 @@ inviteRoutes.post("/consume", async (c) => {
         message: "This invite has already been used.",
       },
       409
+    );
+  }
+
+  // Check capacity before consuming
+  const [consumedRow, configRow] = await Promise.all([
+    countConsumedInvites(db).first<{ count: number }>(),
+    getBetaConfig(db, "max_beta_users").first<{ value: string }>(),
+  ]);
+  const consumed = consumedRow?.count ?? 0;
+  const max = parseInt(configRow?.value ?? "0", 10);
+  if (max > 0 && consumed >= max) {
+    return c.json(
+      {
+        error: "beta_full" as const,
+        message:
+          "The Reflog beta is currently at capacity. Join the waitlist to be notified when a spot opens up.",
+      },
+      403
     );
   }
 
