@@ -1,0 +1,23 @@
+{
+  "name": "@reflog/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "reflog-cli": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "auth0": "^4.16.0",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "tsx": "^4.19.0"
+  }
+}
