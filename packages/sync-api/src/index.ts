@@ -28,6 +28,7 @@ export interface Env {
   DB: D1Database;
   AUTH0_DOMAIN: string;
   AUTH0_AUDIENCE: string;
+  ALLOWED_ORIGINS: string;
   RATE_LIMITER_IP: RateLimiter;
   RATE_LIMITER_USER: RateLimiter;
 }
