@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 AUTH0_DOMAIN = "reflog-microcode.us.auth0.com"
 AUTH0_AUDIENCE = "https://sync.reflog.microcode.io"
+ALLOWED_ORIGINS = "http://localhost:3000,https://reflog.microcode.io,https://reflog-8t5.pages.dev"
 
 [[d1_databases]]
 binding = "DB"
@@ -47,6 +48,7 @@ name = "reflog-sync-api-preview"
 [env.preview.vars]
 AUTH0_DOMAIN = "reflog-dev.us.auth0.com"
 AUTH0_AUDIENCE = "https://sync-preview.reflog.microcode.io"
+ALLOWED_ORIGINS = "http://localhost:3000,https://*.reflog-8t5.pages.dev,https://reflog-8t5.pages.dev"
 
 [[env.preview.d1_databases]]
 binding = "DB"
