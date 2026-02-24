@@ -34,6 +34,13 @@ auth0Command
       PACKAGE_ROOT,
       "src/auth0-actions/post-login-add-email.js"
     );
+    if (!existsSync(codePath)) {
+      throw new Error(
+        `Auth0 Action source file not found at ${codePath}. ` +
+          "Ensure you are running from a checkout that includes " +
+          "src/auth0-actions/post-login-add-email.js."
+      );
+    }
     const code = readFileSync(codePath, "utf-8");
 
     // 2. Find or create the action

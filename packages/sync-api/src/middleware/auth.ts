@@ -49,9 +49,14 @@ export const authMiddleware = createMiddleware<{
       );
     }
 
+    const email =
+      (payload["https://reflog.app/claims/email"] as string) ??
+      (payload.email as string) ??
+      "";
+
     c.set("auth", {
       auth0Sub: payload.sub,
-      email: (payload.email as string) ?? "",
+      email,
     });
 
     await next();
