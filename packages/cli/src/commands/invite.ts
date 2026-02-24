@@ -18,17 +18,26 @@ inviteCommand
     const auth0Config = loadAuth0Config(envPath);
 
     // Check for existing invite
-    const existing = await query(
+    const existing = await query<{ id: string; status: string }>(
       "SELECT id, status FROM invites WHERE email = ?",
       [email],
       config
     );
     if (existing.results.length > 0) {
-      const invite = existing.results[0] as { id: string; status: string };
-      console.error(
-        `Invite already exists for ${email} (status: ${invite.status})`
+      const invite = existing.results[0]!;
+      if (invite.status === "pending" || invite.status === "consumed") {
+        console.error(
+          `Invite already exists for ${email} (status: ${invite.status})`
+        );
+        process.exit(1);
+      }
+      // Revoked or expired — remove the old invite so a fresh one can be created
+      await query(
+        "DELETE FROM invites WHERE id = ?",
+        [invite.id],
+        config
       );
-      process.exit(1);
+      console.log(`Removed previous ${invite.status} invite for ${email}.`);
     }
 
     // Get expiry days from config
