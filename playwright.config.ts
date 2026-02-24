@@ -18,7 +18,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "yarn preview --port 4173",
+    command: "yarn workspace @reflog/web preview --port 4173",
     port: 4173,
     reuseExistingServer: !process.env.CI,
   },

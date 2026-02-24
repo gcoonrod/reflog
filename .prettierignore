@@ -3,4 +3,4 @@ dist/
 build/
 coverage/
 yarn.lock
-src/routeTree.gen.ts
+packages/web/src/routeTree.gen.ts
