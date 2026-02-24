@@ -96,12 +96,13 @@ export async function query<T = Record<string, unknown>>(
   }
 
   // HTTP 200 — parse response body
-  // The D1 API may return either a raw array [{...}] or an envelope { result: [{...}] }
+  // Read as text first so we can include it in error messages if JSON parsing fails
+  // (response body can only be consumed once)
+  const text = await response.text();
   let body: unknown;
   try {
-    body = await response.json();
+    body = JSON.parse(text);
   } catch {
-    const text = await response.text().catch(() => "(unreadable)");
     throw new Error(
       `Unexpected API response (HTTP ${response.status}): ${text.slice(0, 200)}`
     );

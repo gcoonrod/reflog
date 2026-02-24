@@ -4,7 +4,11 @@ import { fileURLToPath } from "url";
 import { existsSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_ENV_PATH = resolve(__dirname, "../../.env");
+// Works from both src/lib/ (dev via tsx) and dist/src/lib/ (built via tsc)
+const PACKAGE_ROOT = existsSync(resolve(__dirname, "../../package.json"))
+  ? resolve(__dirname, "../..")
+  : resolve(__dirname, "../../..");
+const DEFAULT_ENV_PATH = resolve(PACKAGE_ROOT, ".env");
 
 export interface CoreConfig {
   cloudflareApiToken: string;
@@ -43,8 +47,7 @@ export function loadCoreConfig(envPath?: string): CoreConfig {
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}\n` +
-        "Copy packages/cli/.env.example to packages/cli/.env and fill in values."
+      `Missing required environment variables: ${missing.join(", ")}. See .env.example for reference.`
     );
   }
 
@@ -67,8 +70,7 @@ export function loadAuth0Config(envPath?: string): Auth0Config {
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}\n` +
-        "Copy packages/cli/.env.example to packages/cli/.env and fill in values."
+      `Missing required environment variables: ${missing.join(", ")}. See .env.example for reference.`
     );
   }
 

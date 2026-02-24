@@ -38,7 +38,15 @@ export async function createUser(
       }
       return { userId: user.user_id!, created: false };
     }
-    throw err;
+    // Normalize Auth0 SDK errors into a standard Error with a useful message
+    if (err instanceof Error) throw err;
+    const statusCode = typeof err === "object" && err !== null && "statusCode" in err
+      ? (err as { statusCode: number }).statusCode
+      : undefined;
+    const message = typeof err === "object" && err !== null && "message" in err
+      ? (err as { message: string }).message
+      : String(err);
+    throw new Error(`Auth0 error${statusCode ? ` (HTTP ${statusCode})` : ""}: ${message}`);
   }
 }
 
