@@ -1,22 +1,8 @@
 import { Command } from "commander";
 import { randomUUID, randomBytes } from "crypto";
-import { loadConfig } from "../lib/config.js";
+import { loadCoreConfig, loadAuth0Config } from "../lib/config.js";
 import { createUser, triggerPasswordReset } from "../lib/auth0.js";
-import { query, type D1Options } from "../lib/d1.js";
-
-/** Escape a string for use in a SQLite literal by doubling single quotes. */
-function sqlEscape(value: string): string {
-  return value.replace(/'/g, "''");
-}
-
-function getD1Options(cmd: Command): D1Options {
-  const config = loadConfig();
-  const parent = cmd.parent;
-  return {
-    databaseId: config.d1DatabaseId,
-    env: parent?.opts().env,
-  };
-}
+import { query } from "../lib/d1.js";
 
 export const inviteCommand = new Command("invite").description(
   "Manage beta invites"
@@ -27,14 +13,15 @@ inviteCommand
   .option("--from-waitlist", "Mark waitlist entry as invited")
   .description("Create a new invite and Auth0 account for an email")
   .action(async (email: string, opts: { fromWaitlist?: boolean }) => {
-    const config = loadConfig();
-    const d1Opts = getD1Options(inviteCommand);
+    const envPath = inviteCommand.parent?.opts().env as string | undefined;
+    const config = loadCoreConfig(envPath);
+    const auth0Config = loadAuth0Config(envPath);
 
     // Check for existing invite
-    const safeEmail = sqlEscape(email);
     const existing = await query(
-      `SELECT id, status FROM invites WHERE email = '${safeEmail}'`,
-      d1Opts
+      "SELECT id, status FROM invites WHERE email = ?",
+      [email],
+      config
     );
     if (existing.results.length > 0) {
       const invite = existing.results[0] as { id: string; status: string };
@@ -46,16 +33,20 @@ inviteCommand
 
     // Get expiry days from config
     const expiryResult = await query<{ value: string }>(
-      "SELECT value FROM beta_config WHERE key = 'invite_expiry_days'",
-      d1Opts
+      "SELECT value FROM beta_config WHERE key = ?",
+      ["invite_expiry_days"],
+      config
     );
     const expiryDays = expiryResult.results[0]?.value ?? "30";
 
     console.log(`Creating Auth0 account for ${email}...`);
-    const auth0UserId = await createUser(config, email);
-
-    console.log("Triggering password reset email...");
-    await triggerPasswordReset(config, email);
+    const { userId: auth0UserId, created } = await createUser(auth0Config, email);
+    if (created) {
+      console.log("Triggering password reset email...");
+      await triggerPasswordReset(auth0Config, email);
+    } else {
+      console.log(`Auth0 account already exists for ${email}, skipping creation.`);
+    }
 
     const inviteId = randomUUID();
     const token = randomBytes(32).toString("hex");
@@ -65,15 +56,16 @@ inviteCommand
     ).toISOString();
 
     await query(
-      `INSERT INTO invites (id, email, token, status, created_by, created_at, expires_at)
-       VALUES ('${inviteId}', '${safeEmail}', '${token}', 'pending', 'cli', '${now}', '${expiresAt}')`,
-      d1Opts
+      "INSERT INTO invites (id, email, token, status, created_by, created_at, expires_at) VALUES (?, ?, ?, 'pending', 'cli', ?, ?)",
+      [inviteId, email, token, now, expiresAt],
+      config
     );
 
     if (opts.fromWaitlist) {
       await query(
-        `UPDATE waitlist SET invited = 1 WHERE email = '${safeEmail}'`,
-        d1Opts
+        "UPDATE waitlist SET invited = 1 WHERE email = ?",
+        [email],
+        config
       );
       console.log(`Waitlist entry for ${email} marked as invited.`);
     }
@@ -92,11 +84,14 @@ inviteCommand
   )
   .description("List all invites")
   .action(async (opts: { status?: string }) => {
-    const d1Opts = getD1Options(inviteCommand);
+    const envPath = inviteCommand.parent?.opts().env as string | undefined;
+    const config = loadCoreConfig(envPath);
     const now = new Date().toISOString();
 
     const validStatuses = ["pending", "consumed", "expired", "revoked"];
-    let sql = "SELECT * FROM invites ORDER BY created_at DESC";
+
+    let sql: string;
+    let params: string[];
     if (opts.status) {
       if (!validStatuses.includes(opts.status)) {
         console.error(
@@ -104,7 +99,11 @@ inviteCommand
         );
         process.exit(1);
       }
-      sql = `SELECT * FROM invites WHERE status = '${opts.status}' ORDER BY created_at DESC`;
+      sql = "SELECT * FROM invites WHERE status = ? ORDER BY created_at DESC";
+      params = [opts.status];
+    } else {
+      sql = "SELECT * FROM invites ORDER BY created_at DESC";
+      params = [];
     }
 
     const result = await query<{
@@ -113,7 +112,7 @@ inviteCommand
       created_at: string;
       expires_at: string;
       consumed_at: string | null;
-    }>(sql, d1Opts);
+    }>(sql, params, config);
 
     if (result.results.length === 0) {
       console.log("No invites found.");
@@ -151,12 +150,13 @@ inviteCommand
   .command("revoke <email>")
   .description("Revoke a pending invite")
   .action(async (email: string) => {
-    const d1Opts = getD1Options(inviteCommand);
+    const envPath = inviteCommand.parent?.opts().env as string | undefined;
+    const config = loadCoreConfig(envPath);
 
-    const safeEmail = sqlEscape(email);
     const result = await query(
-      `UPDATE invites SET status = 'revoked' WHERE email = '${safeEmail}' AND status = 'pending'`,
-      d1Opts
+      "UPDATE invites SET status = 'revoked' WHERE email = ? AND status = 'pending'",
+      [email],
+      config
     );
 
     if (result.meta.changes === 0) {
