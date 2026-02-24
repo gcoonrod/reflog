@@ -50,12 +50,12 @@ inviteCommand
 
     console.log(`Creating Auth0 account for ${email}...`);
     const { userId: auth0UserId, created } = await createUser(auth0Config, email);
-    if (created) {
-      console.log("Triggering password reset email...");
-      await triggerPasswordReset(auth0Config, email);
-    } else {
+    if (!created) {
       console.log(`Auth0 account already exists for ${email}, skipping creation.`);
     }
+
+    console.log("Sending password reset email...");
+    await triggerPasswordReset(auth0Config, email);
 
     const inviteId = randomUUID();
     const token = randomBytes(32).toString("hex");
