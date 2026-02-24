@@ -22,6 +22,12 @@ export function createUser(
     .bind(id, auth0Sub, email);
 }
 
+export function updateUserEmail(db: D1Database, userId: string, email: string) {
+  return db
+    .prepare("UPDATE users SET email = ? WHERE id = ?")
+    .bind(email, userId);
+}
+
 export function deleteUser(db: D1Database, userId: string) {
   return db.prepare("DELETE FROM users WHERE id = ?").bind(userId);
 }
