@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { inviteCommand } from "./commands/invite.js";
 import { waitlistCommand } from "./commands/waitlist.js";
 import { configCommand } from "./commands/config.js";
+import { auth0Command } from "./commands/auth0.js";
 
 const program = new Command();
 
@@ -15,6 +16,7 @@ program
 program.addCommand(inviteCommand);
 program.addCommand(waitlistCommand);
 program.addCommand(configCommand);
+program.addCommand(auth0Command);
 
 program.parseAsync().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);

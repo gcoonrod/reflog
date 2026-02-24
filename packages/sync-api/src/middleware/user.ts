@@ -3,6 +3,7 @@ import type { AppEnv } from "../index";
 import {
   findUserByAuth0Sub,
   createUser,
+  updateUserEmail,
   updateDeviceLastSeen,
   findDevice,
 } from "../db/queries";
@@ -21,10 +22,16 @@ export const userMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
   if (result) {
     userId = result.id;
+    // Sync email from JWT if the stored value is empty or outdated
+    const email =
+      auth.email && auth.email !== result.email ? auth.email : result.email;
+    if (email !== result.email) {
+      await updateUserEmail(db, result.id, email).run();
+    }
     c.set("user", {
       userId: result.id,
       auth0Sub: result.auth0_sub,
-      email: result.email,
+      email,
     });
   } else {
     userId = crypto.randomUUID();

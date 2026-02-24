@@ -18,7 +18,7 @@ vi.mock("jose", () => ({
   jwtVerify: async () => ({
     payload: {
       sub: "auth0|test-user-001",
-      email: "test@example.com",
+      "https://reflog.app/claims/email": "test@example.com",
     },
     protectedHeader: { alg: "RS256", typ: "JWT" },
   }),
@@ -175,6 +175,55 @@ describe("device registration", () => {
       body: JSON.stringify({ name: "Device 11" }),
     });
     expect(res.status).toBe(409);
+  });
+});
+
+describe("user email self-healing", () => {
+  it("syncs email from JWT when user row has empty email", async () => {
+    // Seed a user with an empty email (simulates pre-Action state)
+    await env.DB.prepare(
+      "INSERT INTO users (id, auth0_sub, email) VALUES (?, ?, ?)",
+    )
+      .bind("user-empty-email", "auth0|test-user-001", "")
+      .run();
+
+    // Any authenticated request triggers the user middleware
+    const res = await request("/devices/register", {
+      method: "POST",
+      body: JSON.stringify({ name: "Email Sync Test" }),
+    });
+    expect(res.status).toBe(201);
+
+    const user = await env.DB.prepare(
+      "SELECT email FROM users WHERE id = ?",
+    )
+      .bind("user-empty-email")
+      .first<{ email: string }>();
+
+    expect(user!.email).toBe("test@example.com");
+  });
+
+  it("syncs email from JWT when user row has stale email", async () => {
+    // Seed a user with a different email
+    await env.DB.prepare(
+      "INSERT INTO users (id, auth0_sub, email) VALUES (?, ?, ?)",
+    )
+      .bind("user-stale-email", "auth0|test-user-001", "old@example.com")
+      .run();
+
+    const res = await request("/devices/register", {
+      method: "POST",
+      body: JSON.stringify({ name: "Stale Email Test" }),
+    });
+    expect(res.status).toBe(201);
+
+    const user = await env.DB.prepare(
+      "SELECT email FROM users WHERE id = ?",
+    )
+      .bind("user-stale-email")
+      .first<{ email: string }>();
+
+    expect(user!.email).toBe("test@example.com");
   });
 });
 
