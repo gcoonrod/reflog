@@ -46,7 +46,7 @@ This is a Yarn Classic workspaces monorepo with four packages:
 packages/
   web/          @reflog/web        — PWA frontend (TanStack Start + React + Mantine)
   sync-api/     reflog-sync-api    — Cloudflare Worker (Hono + D1)
-  cli/          @reflog/cli        — Admin CLI for invite management (Commander.js)
+  cli/          @reflog/cli        — Admin CLI for invite/waitlist/config management (Commander.js + D1 REST API)
   shared/       @reflog/shared     — Shared TypeScript types across packages
 tests/
   e2e/          Playwright browser tests
@@ -57,12 +57,14 @@ specs/          Feature specifications and deliverables
 
 ```
 src/
-  components/     React components (editor, search, tags, timeline, vault, auth)
+  components/     React components (auth, common, editor, layout, search, sync, tags, timeline, vault)
   db/             Dexie database + encryption middleware
-  hooks/          Custom React hooks (useVault, useEntries, useAutoLock)
+  hooks/          Custom React hooks (useVault, useEntries, useAutoLock, useAuth, useSyncStatus, …)
   routes/         TanStack Router file-based routes
-  services/       Business logic (crypto, entries, search, tags, keyboard, sync)
+  services/       Business logic (crypto, entries, search, tags, keyboard, sync, syncApi, vault, auth, …)
+  theme/          Mantine theme configuration
   types/          TypeScript type definitions
+  utils/          Shared utility functions
   content/        Static content (legal pages as Markdown)
 public/
   sw.js           Service worker for offline caching
@@ -92,16 +94,29 @@ yarn workspace reflog-sync-api deploy
 
 ### CLI (admin tools)
 
+The CLI talks directly to Cloudflare D1 via the REST API (native `fetch`, no `wrangler` dependency).
+
 ```bash
 # Configure environment
 cp packages/cli/.env.example packages/cli/.env
-# Edit .env with Auth0 and D1 credentials
+# Edit .env with Cloudflare API token, account ID, and D1 database ID (required by all commands).
+# Auth0 credentials are only needed for `invite create`.
 
-# Run CLI commands
-yarn workspace @reflog/cli start invite create user@example.com
-yarn workspace @reflog/cli start invite list
-yarn workspace @reflog/cli start waitlist list
-yarn workspace @reflog/cli start config get max_beta_users
+# Run CLI commands (dev mode via tsx)
+yarn workspace @reflog/cli dev -- invite create user@example.com
+yarn workspace @reflog/cli dev -- invite list
+yarn workspace @reflog/cli dev -- invite revoke user@example.com
+yarn workspace @reflog/cli dev -- waitlist list
+yarn workspace @reflog/cli dev -- config get max_beta_users
+yarn workspace @reflog/cli dev -- config set max_beta_users 100
+
+# Use a custom .env file
+yarn workspace @reflog/cli dev -- --env /path/to/.env invite list
+
+# Or build and link for global access
+yarn workspace @reflog/cli build
+cd packages/cli && yarn link && cd ../..
+reflog-cli invite list
 ```
 
 ## Scripts
@@ -127,6 +142,8 @@ yarn workspace @reflog/shared typecheck  # TypeScript check
 
 # CLI
 yarn workspace @reflog/cli typecheck     # TypeScript check
+yarn workspace @reflog/cli build         # Compile TypeScript to dist/
+yarn workspace @reflog/cli dev           # Run via tsx (dev mode)
 
 # Cross-workspace
 yarn test:e2e                            # Playwright E2E tests (requires web build)
