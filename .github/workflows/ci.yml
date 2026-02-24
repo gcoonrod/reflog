@@ -216,7 +216,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/web/dist/client --project-name=reflog --branch=develop --commit-hash=${{ github.sha }}
+          workingDirectory: packages/sync-api
+          command: pages deploy ${{ github.workspace }}/packages/web/dist/client --project-name=reflog --branch=develop --commit-hash=${{ github.sha }}
 
   # --- Deployment (main only) ---
   # Runs after all CI jobs pass, only on push to main or manual dispatch.
@@ -357,7 +358,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/web/dist/client --project-name=reflog --branch=main --commit-hash=${{ github.sha }}
+          workingDirectory: packages/sync-api
+          command: pages deploy ${{ github.workspace }}/packages/web/dist/client --project-name=reflog --branch=main --commit-hash=${{ github.sha }}
 
       # --- Post-Deployment: Tag and Summary ---
       - name: Create git tag
