@@ -13,7 +13,7 @@
     "db:migrate:remote": "wrangler d1 execute reflog-sync --remote --file=src/db/schema.sql"
   },
   "dependencies": {
-    "hono": "^4.7.0",
+    "hono": "^4.12.4",
     "jose": "^6.0.0"
   },
   "devDependencies": {
